@@ -17,76 +17,75 @@
 //* 備考：DB2バインド用のPLAN作成に必要
 //******************************************************************** 
 //PC       EXEC PGM=DSNHPC,PARM='HOST(IBMCOB)'                          
-//DBRMLIB  DD  DISP=SHR,                                                
-//             DSN=&DBRMLIB(&MEMB)                        
-//STEPLIB  DD  DISP=SHR,DSN=DSN910.DB9G.SDSNEXIT                        
-//         DD  DISP=SHR,DSN=DSN910.SDSNLOAD                             
-//SYSCIN   DD  DSN=&&DSNHOUT,DISP=(MOD,PASS),UNIT=SYSDA,                
-//             SPACE=(800,(&WSPC,&WSPC))                                
-//SYSIN    DD  DISP=SHR,DSN=&SRCLIB(&MEMB)                              
-//SYSLIB   DD  DISP=SHR,DSN=&INCLUDE                                    
-//SYSPRINT DD  SYSOUT=*                                                 
-//SYSTERM  DD  SYSOUT=*                                                 
-//SYSUDUMP DD  SYSOUT=*                                                 
-//SYSUT1   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT2   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA   
+//DBRMLIB  DD   DISP=SHR,DSN=&DBRMLIB(&MEMB)                        
+//STEPLIB  DD   DISP=SHR,DSN=DSN910.DB9G.SDSNEXIT                        
+//         DD   DISP=SHR,DSN=DSN910.SDSNLOAD                             
+//SYSCIN   DD   DSN=&&DSNHOUT,DISP=(MOD,PASS),UNIT=SYSDA,                
+//              SPACE=(800,(&WSPC,&WSPC))                                
+//SYSIN    DD   DISP=SHR,DSN=&SRCLIB(&MEMB)                              
+//SYSLIB   DD   DISP=SHR,DSN=&INCLUDE                                    
+//SYSPRINT DD   SYSOUT=*                                                 
+//SYSTERM  DD   SYSOUT=*                                                 
+//SYSUDUMP DD   SYSOUT=*                                                 
+//SYSUT1   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT2   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA   
 //********************************************************************
 //* COMPILE（COBOLコンパイル）
 //* 内容：プリコンパイル済みCOBOLソースをコンパイルし、SYSUTで中間結果作成
 //* 備考：リンクステップでロードモジュール作成に使用
 //********************************************************************
 //COB      EXEC PGM=IGYCRCTL,                                           
-//             PARM=(NOSEQUENCE,QUOTE,RENT,'PGMNAME(LONGUPPER)'),       
-//             COND=(4,LT,PC)                                           
-//SYSPRINT DD  SYSOUT=*                                                 
-//SYSTERM  DD  SYSOUT=*                   
-//SYSLIN   DD  DSN=&&LOADSET,                                           
-//             DISP=(MOD,PASS),UNIT=SYSDA,                              
-//             SPACE=(800,(&WSPC,&WSPC))                                
-//SYSIN    DD  DSN=&&DSNHOUT,DISP=(OLD,DELETE)                          
-//SYSUT1   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT2   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT3   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT4   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT5   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT6   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT7   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//              PARM=(NOSEQUENCE,QUOTE,RENT,'PGMNAME(LONGUPPER)'),       
+//              COND=(4,LT,PC)                                           
+//SYSPRINT DD   SYSOUT=*                                                 
+//SYSTERM  DD   SYSOUT=*                   
+//SYSLIN   DD   DSN=&&LOADSET,                                           
+//              DISP=(MOD,PASS),UNIT=SYSDA,                              
+//              SPACE=(800,(&WSPC,&WSPC))                                
+//SYSIN    DD   DSN=&&DSNHOUT,DISP=(OLD,DELETE)                          
+//SYSUT1   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT2   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT3   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT4   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT5   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT6   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT7   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
 //********************************************************************
 //* PRELINK（リンク編集前処理）
 //* 内容：ランタイムライブラリを解決し、リンク編集準備
 //* 備考：EDCPRLKでロードモジュール作成前処理
 //******************************************************************** 
-//PLKED   EXEC PGM=EDCPRLK,COND=((4,LT,PC),(4,LT,COB))                  
-//STEPLIB  DD  DISP=SHR,DSN=CEE.SCEERUN                                 
-//SYSMSGS  DD  DISP=SHR,                                                
-//             DSN=CEE.SCEEMSGP(EDCPMSGE)                               
-//SYSIN    DD  DSN=&&LOADSET,DISP=(OLD,DELETE)     
-//SYSMOD   DD  DSN=&&PLKSET,UNIT=SYSDA,DISP=(MOD,PASS),                 
-//             SPACE=(32000,(30,30)),                                   
-//             DCB=(RECFM=FB,LRECL=80,BLKSIZE=3200)                     
-//SYSDEFSD DD  DUMMY                                                    
-//SYSOUT   DD  SYSOUT=*                                                 
-//SYSPRINT DD  SYSOUT=*                                                 
-//SYSTERM  DD  SYSOUT=*   
+//PLKED    EXEC PGM=EDCPRLK,COND=((4,LT,PC),(4,LT,COB))                  
+//STEPLIB  DD   DISP=SHR,DSN=CEE.SCEERUN                                 
+//SYSMSGS  DD   DISP=SHR,                                                
+//              DSN=CEE.SCEEMSGP(EDCPMSGE)                               
+//SYSIN    DD   DSN=&&LOADSET,DISP=(OLD,DELETE)     
+//SYSMOD   DD   DSN=&&PLKSET,UNIT=SYSDA,DISP=(MOD,PASS),                 
+//              SPACE=(32000,(30,30)),                                   
+//              DCB=(RECFM=FB,LRECL=80,BLKSIZE=3200)                     
+//SYSDEFSD DD   DUMMY                                                    
+//SYSOUT   DD   SYSOUT=*                                                 
+//SYSPRINT DD   SYSOUT=*                                                 
+//SYSTERM  DD   SYSOUT=*   
 //********************************************************************
 //* LINKEDIT（ロードモジュール作成）
 //* 内容：LOADモジュールを生成
 //* 備考：IEWLでロードモジュール作成、MAP出力可能
 //******************************************************************** 
 //LKED     EXEC PGM=IEWL,PARM='MAP',                                    
-//         COND=((4,LT,PC),(4,LT,COB),(4,LT,PLKED))                     
-//SYSLIB   DD  DISP=SHR,DSN=CEE.SCEELKED                                
-//         DD  DISP=SHR,DSN=DSN910.SDSNLOAD                             
-//         DD  DISP=SHR,DSN=ISP.SISPLOAD                                
-//         DD  DISP=SHR,DSN=GDDM.SADMMOD                                
-//SYSLIN   DD  DSN=&&PLKSET,DISP=(OLD,DELETE)                           
-//         DD  DDNAME=SYSIN                                             
-//SYSLMOD  DD  DSN=&LOAD(&MEMB),SPACE=(32000,(30,30)),   
-//             DISP=(MOD,KEEP),                                         
-//             DCB=(RECFM=U,LRECL=80,BLKSIZE=3200)                      
-//SYSPRINT DD  SYSOUT=*                                                 
-//SYSUT1   DD  SPACE=(1024,(50,50)),UNIT=SYSDA,                         
-//             DCB=(RECFM=FB,LRECL=80,BLKSIZE=3200)                     
+//              COND=((4,LT,PC),(4,LT,COB),(4,LT,PLKED))                     
+//SYSLIB   DD   DISP=SHR,DSN=CEE.SCEELKED                                
+//         DD   DISP=SHR,DSN=DSN910.SDSNLOAD                             
+//         DD   DISP=SHR,DSN=ISP.SISPLOAD                                
+//         DD   DISP=SHR,DSN=GDDM.SADMMOD                                
+//SYSLIN   DD   DSN=&&PLKSET,DISP=(OLD,DELETE)                           
+//         DD   DDNAME=SYSIN                                             
+//SYSLMOD  DD   DSN=&LOAD(&MEMB),SPACE=(32000,(30,30)),   
+//              DISP=(MOD,KEEP),                                         
+//              DCB=(RECFM=U,LRECL=80,BLKSIZE=3200)                      
+//SYSPRINT DD   SYSOUT=*                                                 
+//SYSUT1   DD   SPACE=(1024,(50,50)),UNIT=SYSDA,                         
+//              DCB=(RECFM=FB,LRECL=80,BLKSIZE=3200)                     
 //********************************************************************
 //* BIND（DB2バインド）
 //* 内容：DBRMをPLANにバインド
