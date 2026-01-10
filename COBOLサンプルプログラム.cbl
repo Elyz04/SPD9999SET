@@ -2,15 +2,16 @@
 000000 IDENTIFICATION                  DIVISION.                            
 000000 PROGRAM-ID.                     PGM01.  
 000000*/-------------------------------------------------------------/*     
-000000*    PROGRAM-ID    :             PGM01                          *     
-000000*    CREATE        :             2026/01/07                     *     
-000000*    AUTHOR        :             XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX *     
+000000*    PROGRAM-ID     :            PGM01                          *     
+000000*    CREATE         :            2026/01/07                     *
+000000*    DATE COMPILED  :            2026/01/07                     *      
+000000*    AUTHOR         :            XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX *
 000000*/-------------------------------------------------------------/*   
-000000*    UPDATE        :                                            *
-000000*        XXXX/XX/XX :            XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX *   
-000000*        XXXX/XX/XX :            XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX * 
-000000*        XXXX/XX/XX :            XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX * 
-000000*        XXXX/XX/XX :            XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX * 
+000000*    UPDATE         :                                           *
+000000*        2026/01/08 : データベース更新 (DBの利息と合計金額更新)    *   
+000000*        2026/01/09 : SQLエラー時はABEND処理                     * 
+000000*        2026/01/10 : 対象はDB_ACCOUNT_SAVINGSテーブル           * 
+000000*        2026/01/11 : INTEREST と MONEY フィールドを更新          * 
 000000*/-------------------------------------------------------------/*         
 000000 DATA                            DIVISION.                                
 000000 WORKING-STORAGE                 SECTION.  
@@ -183,15 +184,19 @@
 000000*                                                     
 000000     MOVE FUNCTION CURRENT-DATE  TO  HV-DATE-CURRENT-X.                 
 000000     MOVE HV-DATE-CURRENT-X(1:8) TO  HV-DATE-CURRENT-9. 
-000000*               
+000000*--- 現在日付をYYYYMMDDから日数（整数）に変換                
 000000     COMPUTE HV-DAYS-CURRENT =                                        
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-CURRENT-9).  
+000000*--- DBの開始日を数値化（文字列→数値
 000000     COMPUTE HV-DATE-START-9 =                                      
-000000         FUNCTION    NUMVAL(DB-START-DATE).                     
+000000         FUNCTION    NUMVAL(DB-START-DATE).
+000000*--- 開始日を日数（整数）に変換                     
 000000     COMPUTE HV-DAYS-START   =                                        
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-START-9).          
+000000*--- DBの終了日を数値化（文字列→数値）
 000000     COMPUTE HV-DATE-END-9   =                                        
 000000         FUNCTION NUMVAL(DB-END-DATE).                       
+000000*--- 終了日を日数（整数）に変換
 000000     COMPUTE HV-DAYS-END     =                                          
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-END-9). 
 000000*            
@@ -204,7 +209,11 @@
 000000*                                                        
 000000     COMPUTE WS-DAYS-ACTUAL  =                                       
 000000             HV-DAYS-CURRENT - HV-DAYS-START.  
-000000*                          
+000000*--- 日数が負の場合は0にする    
+000000     IF WS-DAYS-ACTUAL < 0
+000000         MOVE 0                  TO  WS-DAYS-ACTUAL
+000000     END-IF.
+000000*                      
 000000     EXIT.                                                          
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利率取得                *         
@@ -256,12 +265,13 @@
 000000*                                |                              *         
 000000*/-------------------------------------------------------------/* 
 000000 CALCULATE-INTEREST.
-000000*                                     
+000000*--- 定期なし口座の処理                                     
 000000     IF DB-SAVING-TYPE = CST-NON-TERM                            
 000000         COMPUTE WS-AMOUNT-INTEREST =                             
 000000                 DB-MONEY-ROOT      * 
 000000                 WS-RATE-INTEREST   * 
 000000                 WS-DAYS-ACTUAL     / 365                           
+000000*--- 定期口座（90日／180日／365日）の処理     
 000000     ELSE                                                   
 000000         IF HV-DAYS-CURRENT >= HV-DAYS-END                    
 000000             EVALUATE DB-SAVING-TYPE                        
