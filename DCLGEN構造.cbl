@@ -62,15 +62,15 @@
 000000* STATUS       : 状態 (例: 'A'=有効, 'C'=解約)                     *
 000000******************************************************************
 000000 01  DCLDB-ACCOUNT-SAVINGS.                                       
-000000     03 DB-ORDER-ID                 PIC S9(9)       USAGE COMP.             
-000000     03 DB-ACC-ID                   PIC S9(9)       USAGE COMP.             
-000000     03 DB-SAVING-TYPE              PIC X(10).                        
-000000     03 DB-START-DATE               PIC X(8).                         
-000000     03 DB-END-DATE                 PIC X(8).                         
-000000     03 DB-MONEY-ROOT               PIC S9(13)V9(2) USAGE COMP-3.    
-000000     03 DB-INTEREST                 PIC S9(13)V9(2) USAGE COMP-3.    
-000000     03 DB-MONEY                    PIC S9(13)V9(2) USAGE COMP-3.    
-000000     03 DB-STATUS                   PIC X(1).                         
+000000     03 AS-ORDER-ID                 PIC S9(9)       USAGE COMP.             
+000000     03 AS-ACC-ID                   PIC S9(9)       USAGE COMP.             
+000000     03 AS-SAVING-TYPE              PIC X(10).                        
+000000     03 AS-START-DATE               PIC X(8).                         
+000000     03 AS-END-DATE                 PIC X(8).                         
+000000     03 AS-MONEY-ROOT               PIC S9(13)V9(2) USAGE COMP-3.    
+000000     03 AS-INTEREST                 PIC S9(13)V9(2) USAGE COMP-3.    
+000000     03 AS-MONEY                    PIC S9(13)V9(2) USAGE COMP-3.    
+000000     03 AS-STATUS                   PIC X(1).                         
 000000******************************************************************
 000000* THE NUMBER OF COLUMNS DESCRIBED BY THIS DECLARATION IS 9       *
 000000******************************************************************

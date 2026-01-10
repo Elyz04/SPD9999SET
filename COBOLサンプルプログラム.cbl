@@ -149,12 +149,12 @@
 000000*                                                 
 000000     EXEC SQL                                                    
 000000         FETCH C1                                            
-000000         INTO  :DB-ORDER-ID,                                    
-000000               :DB-ACC-ID,                                      
-000000               :DB-SAVING-TYPE,                                 
-000000               :DB-START-DATE,                                  
-000000               :DB-END-DATE,                                    
-000000               :DB-MONEY-ROOT                      
+000000         INTO  :AS-ORDER-ID,                                    
+000000               :AS-ACC-ID,                                      
+000000               :AS-SAVING-TYPE,                                 
+000000               :AS-START-DATE,                                  
+000000               :AS-END-DATE,                                    
+000000               :AS-MONEY-ROOT                      
 000000     END-EXEC.                                                 
 000000*                                                              
 000000     EVALUATE SQLCODE                                          
@@ -226,7 +226,7 @@
 000000          SELECT INTEREST_RATE                                       
 000000          INTO   :WS-RATE-INTEREST                                     
 000000          FROM   MYDB.DB_INTEREST_INFO                            
-000000          WHERE  SAVING_TYPE = :DB-SAVING-TYPE                   
+000000          WHERE  SAVING_TYPE = :AS-SAVING-TYPE                   
 000000      END-EXEC.
 000000*                                                       
 000000      IF SQLCODE < 0  
@@ -316,7 +316,7 @@
 000000         UPDATE  MYDB.DB_ACCOUNT_SAVINGS                  
 000000         SET     INTEREST = :WS-AMOUNT-INTEREST,                
 000000                 MONEY    = :WS-AMOUNT-TOTAL                  
-000000         WHERE   ORDER_ID = :DB-ORDER-ID                   
+000000         WHERE   ORDER_ID = :AS-ORDER-ID                   
 000000     END-EXEC.
 000000*                                                     
 000000     IF SQLCODE < 0
@@ -374,9 +374,9 @@
 000000*  
 000000     EXEC SQL                                             
 000000         FETCH C2                                       
-000000         INTO :DB-ORDER-ID,                               
-000000              :DB-ACC-ID,                                 
-000000              :DB-MONEY                                   
+000000         INTO :AS-ORDER-ID,                               
+000000              :AS-ACC-ID,                                 
+000000              :AS-MONEY                                   
 000000     END-EXEC.  
 000000*                                          
 000000     EVALUATE SQLCODE                                     
@@ -405,7 +405,7 @@
 000000*                                  
 000000     EXEC SQL                                             
 000000         UPDATE  MYDB.DB_ACCOUNT_BALANCE                   
-000000         SET     BALANCE = BALANCE + :DB-MONEY                
+000000         SET     BALANCE = BALANCE + :AS-MONEY                
 000000         WHERE   ACC_ID  = :AB-ACC-ID                        
 000000     END-EXEC.
 000000*                                              
@@ -427,7 +427,7 @@
 000000      EXEC SQL                                                      
 000000          UPDATE     MYDB.DB_ACCOUNT_SAVINGS                            
 000000          SET STATUS          = :CST-STATUS-9                         
-000000          WHERE      ORDER_ID = :DB-ORDER-ID                      
+000000          WHERE      ORDER_ID = :AS-ORDER-ID                      
 000000      END-EXEC.                                                     
 000000*                 
 000000      IF SQLCODE < 0  
