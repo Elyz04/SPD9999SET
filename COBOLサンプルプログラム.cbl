@@ -3,10 +3,9 @@
 000000 PROGRAM-ID.                     PGM01.  
 000000*/-------------------------------------------------------------/*     
 000000*    PROGRAM-ID     :            PGM01                               
-000000*    CREATE         :            2026/01/07                     
-000000*    DATE COMPILED  :            2026/01/07                          
+000000*    CREATE DATE    :            2026/01/07                              
 000000*    AUTHOR         :            Elyz04                         
-000000*    PURPOSE        :
+000000*    PURPOSE        :            利息計算および満期決済処理
 000000*/-------------------------------------------------------------/*   
 000000*    UPDATE         :                                           
 000000*        2026/01/08 : データベース更新 (DBの利息と合計金額更新)       
@@ -81,6 +80,9 @@
 000000*--- DEBUG / ABEND 処理  
 000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.     
 000000    03 CST-DEBUG-MODE            PIC X(1)   VALUE 'Y'.
+000000*/-------------------------------------------------------------/*
+000000*  JCL パラメータ受け取りエリア                                                     
+000000*/-------------------------------------------------------------/* 
 000000 LINKAGE                         SECTION.
 000000 01 LNK-PARAM-JCL.
 000000    03 LNK-PARAM-LENGHT          PIC S9(04) COMP.
@@ -124,6 +126,10 @@
 000000         PERFORM                 DISPLAY-TOTAL
 000000     END-IF.
 000000*
+000000     EXEC SQL
+000000         COMMIT
+000000     END-EXEC.
+000000*
 000000     STOP RUN.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 変数初期化                       
@@ -162,7 +168,9 @@
 000000         OPEN C1                                           
 000000     END-EXEC.
 000000*---                                      
-000000     IF SQLCODE < 0  
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE  
 000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT               
 000000         PERFORM ABEND-PROGRAM                            
 000000     END-IF.                                                 
@@ -243,7 +251,7 @@
 000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 現在日付取得                    
+000000*                                | NOTE: 現在日付および期間日数取得                    
 000000* GET-CURR-DATE-FUNC-002 SECTION |                                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
@@ -285,21 +293,23 @@
 000000*/-------------------------------------------------------------/*      
 000000 EXEC-GET-INTEREST-RATE.
 000000*                                                 
-000000      EXEC SQL                                                       
-000000          SELECT INTEREST_RATE                                       
-000000          INTO   :WS-RATE-INTEREST                                     
-000000          FROM   MYDB.DB_INTEREST_INFO                            
-000000          WHERE  SAVING_TYPE = :AS-SAVING-TYPE                   
-000000      END-EXEC.
-000000*                                                       
-000000      IF SQLCODE < 0  
-000000          MOVE 'EXEC-GET-INTEREST-RATE' 
-000000                                 TO 
-000000               CST-ABEND-BREAKPOINT       
-000000          PERFORM ABEND-PROGRAM                               
-000000      END-IF.
-000000*                                                         
-000000      EXIT.                                                     
+000000     EXEC SQL                                                       
+000000         SELECT INTEREST_RATE                                       
+000000         INTO   :WS-RATE-INTEREST                                     
+000000         FROM   MYDB.DB_INTEREST_INFO                            
+000000         WHERE  SAVING_TYPE = :AS-SAVING-TYPE                   
+000000     END-EXEC.
+000000*                                                      
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE  
+000000         MOVE 'EXEC-GET-INTEREST-RATE' 
+000000                                TO 
+000000              CST-ABEND-BREAKPOINT       
+000000         PERFORM ABEND-PROGRAM                               
+000000     END-IF.
+000000*                                                        
+000000     EXIT.                                                     
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 非定期利率取得                   
 000000* EXEC-GET-NONTERM-RATE  SECTION |                                  
@@ -314,7 +324,9 @@
 000000         WHERE   SAVING_TYPE = :CST-NON-TERM                     
 000000     END-EXEC.
 000000*                                                        
-000000     IF SQLCODE < 0  
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE  
 000000         MOVE 'EXEC-GET-NONTERM-RATE' 
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT                                       
@@ -414,7 +426,9 @@
 000000         WHERE   ORDER_ID = :AS-ORDER-ID                   
 000000     END-EXEC.
 000000*                                                     
-000000     IF SQLCODE < 0
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE
 000000         MOVE 'UPDATE-DATABASE' 
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT                                      
@@ -449,7 +463,9 @@
 000000         OPEN C2                                        
 000000     END-EXEC.
 000000*---                                                               
-000000     IF SQLCODE < 0
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE
 000000         MOVE 'FUNCTION-002'     TO      CST-ABEND-BREAKPOINT
 000000         PERFORM ABEND-PROGRAM                          
 000000     END-IF.                                              
@@ -516,7 +532,9 @@
 000000         WHERE   ACC_ID  = :AB-ACC-ID                        
 000000     END-EXEC.
 000000*                                              
-000000     IF SQLCODE < 0
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE
 000000         MOVE 'UPDATE-ACCOUNT-BALANCE' 
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT         
@@ -531,20 +549,22 @@
 000000*/-------------------------------------------------------------/*     
 000000 UPDATE-SAVING-STATUS.
 000000*                                              
-000000      EXEC SQL                                                      
-000000          UPDATE     MYDB.DB_ACCOUNT_SAVINGS                            
-000000          SET STATUS          = :CST-STATUS-9                         
-000000          WHERE      ORDER_ID = :AS-ORDER-ID                      
-000000      END-EXEC.                                                     
-000000*                 
-000000      IF SQLCODE < 0  
-000000         MOVE 'UPDATE-SAVING-STATUS' 
+000000     EXEC SQL                                                      
+000000         UPDATE     MYDB.DB_ACCOUNT_SAVINGS                            
+000000         SET STATUS          = :CST-STATUS-9                         
+000000         WHERE      ORDER_ID = :AS-ORDER-ID                      
+000000     END-EXEC.                                                     
+000000*                
+000000     IF SQLCODE = 0
+000000        CONTINUE
+000000     ELSE  
+000000        MOVE 'UPDATE-SAVING-STATUS' 
 000000                                 TO 
-000000              CST-ABEND-BREAKPOINT           
-000000          PERFORM ABEND-PROGRAM                                   
-000000      END-IF.
+000000             CST-ABEND-BREAKPOINT           
+000000         PERFORM ABEND-PROGRAM                                   
+000000     END-IF.
 000000*                                                         
-000000      EXIT.
+000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済明細表示                
 000000* DISPLAY-DETAIL-FUNC01  SECTION |                                     
@@ -606,6 +626,12 @@
 000000     DISPLAY 'ABEND-PROGRAM'.
 000000     DISPLAY 'ERROR MODULE : ' CST-ABEND-BREAKPOINT.
 000000     DISPLAY 'SQLCODE      : ' SQLCODE.
+000000     DISPLAY 'SQLSTATE     : ' SQLSTATE.
+000000     DISPLAY 'SQLERRMC     : ' SQLERRMC.
+000000*
+000000     EXEC SQL
+000000         ROLLBACK
+000000     END-EXEC.
 000000*
 000000     STOP RUN.  
 000000*===============================================================*         
