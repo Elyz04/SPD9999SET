@@ -94,11 +94,8 @@
 000000     PERFORM                     FUNCTION-002.
 000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
 000000     IF CST-DEGUG-MODE = 'Y'
-000000         PERFORM                 DISPLAY-DETAIL-FUNC001
-000000         PERFORM                 DISPLAY-DETAIL-FUNC002
-000000         PERFORM                 DISPLAY-TOTAL-FUNC001
-000000         PERFORM                 DISPLAY-TOTAL-FUNC002
-000000     END-IF.
+000000         PERFORM                 DISPLAY-TOTAL
+000000     END-IF 
 000000*
 000000     STOP RUN.
 000000*/-------------------------------------------------------------/*         
@@ -171,11 +168,15 @@
 000000         WHEN 100                                                
 000000             MOVE 'Y'            TO            CST-FLAG-1             
 000000         WHEN 0                                                  
-000000             PERFORM GET-CURRENT-DATE                                      
+000000             PERFORM GET-CURRENT-DATE
 000000             PERFORM EXEC-GET-INTEREST-RATE                             
 000000             PERFORM CACULATE-FUNC01                     
 000000             PERFORM UPDATE-DATABASE
-000000             ADD 1               TO            CST-COUNT-FUNC001                     
+000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
+000000             IF CST-DEGUG-MODE = 'Y'
+000000                 PERFORM DISPLAY-DETAIL
+000000             END-IF 
+000000             ADD 1               TO            CST-COUNT-FUNC001
 000000         WHEN OTHER                                              
 000000             MOVE 'FETCH-AND-CALCULATE' 
 000000                                 TO 
@@ -194,19 +195,19 @@
 000000     MOVE FUNCTION CURRENT-DATE  TO  HV-DATE-CURRENT-X.                 
 000000     MOVE HV-DATE-CURRENT-X(1:8) TO  HV-DATE-CURRENT-9. 
 000000*--- 現在日付をYYYYMMDDから日数（整数）に変換                
-000000     COMPUTE HV-DAYS-CURRENT-COMP =                                        
+000000     COMPUTE HV-DAYS-CURRENT-COMP =
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-CURRENT-9).  
 000000*--- DBの開始日を数値化（文字列→数値
 000000     COMPUTE HV-DATE-START-9 =                                      
 000000         FUNCTION    NUMVAL(AS-START-DATE).
 000000*--- 開始日を日数（整数）に変換                     
-000000     COMPUTE HV-DAYS-START-COMP   =                                        
+000000     COMPUTE HV-DAYS-START-COMP   =
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-START-9).          
 000000*--- DBの終了日を数値化（文字列→数値）
 000000     COMPUTE HV-DATE-END-9   =                                        
 000000         FUNCTION NUMVAL(AS-END-DATE).                       
 000000*--- 終了日を日数（整数）に変換
-000000     COMPUTE HV-DAYS-END-COMP     =                                          
+000000     COMPUTE HV-DAYS-END-COMP     =
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-END-9). 
 000000*            
 000000     IF SQLCODE < 0
@@ -436,7 +437,11 @@
 000000             MOVE AS-ACC-ID      TO      AB-ACC-ID                     
 000000             PERFORM UPDATE-ACCOUNT-BALANCE                   
 000000             PERFORM UPDATE-SAVING-STATUS
-000000             ADD 1               TO      CST-COUNT-FUNC002                    
+000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
+000000             IF CST-DEGUG-MODE = 'Y'
+000000                 PERFORM DISPLAY-DETAIL
+000000             END-IF 
+000000             ADD 1               TO      CST-COUNT-FUNC002
 000000         WHEN OTHER                                          
 000000             MOVE 'FETCH-SAV-SETTLEMENT' 
 000000                                 TO 
@@ -488,52 +493,34 @@
 000000*                                                         
 000000      EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 利息明細表示                
-000000* DISPLAY-DETAIL-FUNC001 SECTION |                                     
-000000*                                |                                     
+000000*                                | NOTE: 利息・決済明細表示                
+000000* DISPLAY-DETAIL         SECTION |                                     
+000000*                                |                                      
 000000*/-------------------------------------------------------------/*  
-000000 DISPLAY-DETAIL-FUNC001.                                         
+000000 DISPLAY-DETAIL.
 000000*
 000000     DISPLAY 'ORDER_ID    : ' AS-ORDER-ID.
-000000     DISPLAY 'ACC_ID      : ' AS-ACC-ID.
+000000     DISPLAY 'ACC_ID      : ' AB-ACC-ID.
 000000     DISPLAY 'SAVING_TYPE : ' AS-SAVING-TYPE.
 000000     DISPLAY 'MONEY_ROOT  : ' AS-MONEY-ROOT.
 000000     DISPLAY 'INTEREST    : ' WS-AMOUNT-INTEREST.
 000000     DISPLAY 'TOTAL       : ' WS-AMOUNT-TOTAL.
 000000     DISPLAY 'STATUS      : ' CST-STATUS-1.
 000000*
+000000     DISPLAY 'BALANCE     : ' AS-MONEY.
+000000     DISPLAY 'STATUS      : ' CST-STATUS-9.
+000000*
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 決済明細表示                 
-000000* DISPLAY-DETAIL-FUNC002 SECTION |                                      
-000000*                                |                                      
-000000*/-------------------------------------------------------------/*     
-000000 DISPLAY-DETAIL-FUNC002.
-000000*
-000000     DISPLAY 'ORDER_ID : ' AS-ORDER-ID.
-000000     DISPLAY 'ACC_ID   : ' AB-ACC-ID.
-000000     DISPLAY 'BALANCE  : ' AS-MONEY.
-000000     DISPLAY 'STATUS   : ' CST-STATUS-9.
-000000*
-000000     EXIT. 
-000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 利息処理件数表示                
-000000* DISPLAY-TOTAL-FUNC001  SECTION |                                       
+000000*                                | NOTE: 利息・決済処理件数表示                
+000000* DISPLAY-TOTAL          SECTION |                                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
-000000 DISPLAY-TOTAL-FUNC001.
+000000 DISPLAY-TOTAL.
 000000*    
 000000     DISPLAY 'TOTAL ACCOUNTS PROCESSED IN FUNCTION-001 : ' 
 000000     CST-COUNT-FUNC001.
 000000*
-000000     EXIT.
-000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 決済処理件数表示            
-000000* DISPLAY-TOTAL-FUNC002  SECTION |                                     
-000000*                                |                                     
-000000*/-------------------------------------------------------------/* 
-000000 DISPLAY-TOTAL-FUNC002.
-000000*    
 000000     DISPLAY 'TOTAL ACCOUNTS PROCESSED IN FUNCTION-002 : ' 
 000000     CST-COUNT-FUNC002.
 000000*
