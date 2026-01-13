@@ -6,12 +6,14 @@
 000000*    CREATE         :            2026/01/07                     
 000000*    DATE COMPILED  :            2026/01/07                          
 000000*    AUTHOR         :            Elyz04                         
+000000*    PURPOSE        :
 000000*/-------------------------------------------------------------/*   
 000000*    UPDATE         :                                           
 000000*        2026/01/08 : データベース更新 (DBの利息と合計金額更新)       
 000000*        2026/01/09 : SQLエラー時はABEND処理                     
 000000*        2026/01/10 : 対象はDB_ACCOUNT_SAVINGSテーブル            
 000000*        2026/01/11 : INTEREST と MONEY フィールドを更新          
+000000*        2026/01/13 : 処理ロジックの最終調整（INTEREST と MONEY 更新）
 000000*/-------------------------------------------------------------/*
 000000 ENVIRONMENT                     DIVISION.         
 000000 DATA                            DIVISION.                                
@@ -50,14 +52,13 @@
 000000*  ホスト変数                                                    
 000000*/-------------------------------------------------------------/*     
 000000 01 HV-VARIABLES.                                       
-000000    03 HV-DAYS-CURRENT           PIC S9(9)  COMP.               
-000000    03 HV-DAYS-START             PIC S9(9)  COMP.               
-000000    03 HV-DAYS-END               PIC S9(9)  COMP.                 
+000000    03 HV-DAYS-CURRENT-COMP      PIC S9(9)  COMP.               
+000000    03 HV-DAYS-START-COMP        PIC S9(9)  COMP.               
+000000    03 HV-DAYS-END-COMP          PIC S9(9)  COMP.                 
 000000    03 HV-DATE-START-9           PIC 9(8).                    
 000000    03 HV-DATE-END-9             PIC 9(8).                     
 000000    03 HV-DATE-CURRENT-X         PIC X(21).                    
 000000    03 HV-DATE-CURRENT-9         PIC 9(8).                            
-000000    03 HV-ABEND-BREAKPOINT       PIC X(100).   
 000000*/-------------------------------------------------------------/*
 000000*  定数定義                                                      
 000000*/-------------------------------------------------------------/*     
@@ -73,7 +74,10 @@
 000000    03 CST-FIXED-VALUE-06        PIC 9(3)   VALUE 180.      
 000000    03 CST-FIXED-VALUE-12        PIC 9(3)   VALUE 365. 
 000000    03 CST-COUNT-FUNC001         PIC 9(5)   VALUE 0.  
-000000    03 CST-COUNT-FUNC002         PIC 9(5)   VALUE 0.    
+000000    03 CST-COUNT-FUNC002         PIC 9(5)   VALUE 0.
+000000*--- DEBUG / ABEND 処理  
+000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.     
+000000    03 CST-DEGUG-MODE            PIC X(1)   VALUE 'N'.
 000000*===============================================================*         
 000000*====        ＰＲＯＣＥＤＵＲＥ　　 　　ＤＩＶＩＳＩＯＮ        ====*         
 000000*===============================================================*       
@@ -88,8 +92,13 @@
 000000     PERFORM                     INIT-VARIABLE.                 
 000000     PERFORM                     FUNCTION-001.                            
 000000     PERFORM                     FUNCTION-002.
-000000     PERFORM                     DISPLAY-TOTAL-FUNC001.
-000000     PERFORM                     DISPLAY-TOTAL-FUNC002.
+000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
+000000     IF CST-DEGUG-MODE = 'Y'
+000000         PERFORM                 DISPLAY-DETAIL-FUNC001
+000000         PERFORM                 DISPLAY-DETAIL-FUNC002
+000000         PERFORM                 DISPLAY-TOTAL-FUNC001
+000000         PERFORM                 DISPLAY-TOTAL-FUNC002
+000000     END-IF.
 000000*
 000000     STOP RUN.
 000000*/-------------------------------------------------------------/*         
@@ -119,7 +128,7 @@
 000000         SELECT  ORDER_ID,                                 
 000000                 ACC_ID,                                   
 000000                 SAVING_TYPE,                              
-000000                 START_DATE,                                                              
+000000                 START_DATE,                                            
 000000                 MONEY_ROOT                             
 000000         FROM    MYDB.DB_ACCOUNT_SAVINGS                     
 000000         WHERE STATUS = :CST-STATUS-1                     
@@ -130,7 +139,7 @@
 000000     END-EXEC.
 000000*---                                      
 000000     IF SQLCODE < 0  
-000000         MOVE 'FUNCTION-001'     TO     HV-ABEND-BREAKPOINT               
+000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT               
 000000         PERFORM ABEND-PROGRAM                            
 000000     END-IF.                                                 
 000000     PERFORM UNTIL CST-FLAG-1 = 'Y'                            
@@ -166,12 +175,11 @@
 000000             PERFORM EXEC-GET-INTEREST-RATE                             
 000000             PERFORM CACULATE-FUNC01                     
 000000             PERFORM UPDATE-DATABASE
-000000             ADD 1               TO            CST-COUNT-FUNC001 
-000000             PERFORM DISPLAY-DETAIL-FUNC001                      
+000000             ADD 1               TO            CST-COUNT-FUNC001                     
 000000         WHEN OTHER                                              
 000000             MOVE 'FETCH-AND-CALCULATE' 
 000000                                 TO 
-000000                  HV-ABEND-BREAKPOINT        
+000000                  CST-ABEND-BREAKPOINT        
 000000             PERFORM ABEND-PROGRAM                              
 000000     END-EVALUATE.
 000000*                                                         
@@ -186,30 +194,30 @@
 000000     MOVE FUNCTION CURRENT-DATE  TO  HV-DATE-CURRENT-X.                 
 000000     MOVE HV-DATE-CURRENT-X(1:8) TO  HV-DATE-CURRENT-9. 
 000000*--- 現在日付をYYYYMMDDから日数（整数）に変換                
-000000     COMPUTE HV-DAYS-CURRENT =                                        
+000000     COMPUTE HV-DAYS-CURRENT-COMP =                                        
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-CURRENT-9).  
 000000*--- DBの開始日を数値化（文字列→数値
 000000     COMPUTE HV-DATE-START-9 =                                      
 000000         FUNCTION    NUMVAL(AS-START-DATE).
 000000*--- 開始日を日数（整数）に変換                     
-000000     COMPUTE HV-DAYS-START   =                                        
+000000     COMPUTE HV-DAYS-START-COMP   =                                        
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-START-9).          
 000000*--- DBの終了日を数値化（文字列→数値）
 000000     COMPUTE HV-DATE-END-9   =                                        
 000000         FUNCTION NUMVAL(AS-END-DATE).                       
 000000*--- 終了日を日数（整数）に変換
-000000     COMPUTE HV-DAYS-END     =                                          
+000000     COMPUTE HV-DAYS-END-COMP     =                                          
 000000         FUNCTION    INTEGER-OF-DATE(HV-DATE-END-9). 
 000000*            
 000000     IF SQLCODE < 0
 000000        MOVE 'GET-CURRENT-DATE' 
 000000                                 TO 
-000000             HV-ABEND-BREAKPOINT                                         
+000000             CST-ABEND-BREAKPOINT                                         
 000000        PERFORM ABEND-PROGRAM                                    
 000000     END-IF.
 000000*                                                        
 000000     COMPUTE WS-DAYS-ACTUAL  =                                       
-000000             HV-DAYS-CURRENT - HV-DAYS-START.  
+000000             HV-DAYS-CURRENT-COMP - HV-DAYS-START-COMP.  
 000000*--- 日数が負の場合は0にする    
 000000     IF WS-DAYS-ACTUAL < 0
 000000         MOVE 0                  TO  WS-DAYS-ACTUAL
@@ -233,7 +241,7 @@
 000000      IF SQLCODE < 0  
 000000          MOVE 'EXEC-GET-INTEREST-RATE' 
 000000                                 TO 
-000000               HV-ABEND-BREAKPOINT       
+000000               CST-ABEND-BREAKPOINT       
 000000          PERFORM ABEND-PROGRAM                               
 000000      END-IF.
 000000*                                                         
@@ -255,7 +263,7 @@
 000000     IF SQLCODE < 0  
 000000         MOVE 'EXEC-GET-NONTERM-RATE' 
 000000                                 TO 
-000000              HV-ABEND-BREAKPOINT                                       
+000000              CST-ABEND-BREAKPOINT                                       
 000000         PERFORM ABEND-PROGRAM                              
 000000     END-IF.
 000000*                                                          
@@ -267,14 +275,27 @@
 000000*/-------------------------------------------------------------/*
 000000 CACULATE-FUNC01.
 000000*--- 注記: FUN_001 は現在時点での仮利息のみを計算する
-000000*--- すべての種類の預金に対して同一の計算式を適用する
-000000     COMPUTE WS-AMOUNT-INTEREST =
-000000             AS-MONEY-ROOT
-000000           * WS-RATE-INTEREST
-000000           * WS-DAYS-ACTUAL
-000000           / 365
-000000     COMPUTE WS-AMOUNT-TOTAL =
-000000             AS-MONEY-ROOT + WS-AMOUNT-INTEREST.
+000000*--- 預金タイプごとに計算式を分ける
+000000     IF AS-SAVING-TYPE = CST-NON-TERM
+000000*       非定期預金の場合の利息計算
+000000         COMPUTE WS-AMOUNT-INTEREST =
+000000                 AS-MONEY-ROOT      *
+000000                 WS-RATE-INTEREST   *
+000000                 WS-DAYS-ACTUAL     /
+000000                 CST-FIXED-VALUE-12
+000000     ELSE
+000000*       定期預金の場合（仮利息、まだ満期ではないのでActual_Days使用）
+000000         COMPUTE WS-AMOUNT-INTEREST =
+000000                 AS-MONEY-ROOT      *
+000000                 WS-RATE-INTEREST   *
+000000                 WS-DAYS-ACTUAL     /
+000000                 CST-FIXED-VALUE-12
+000000     END-IF.
+000000*
+000000*--- 総額計算
+000000     COMPUTE WS-AMOUNT-TOTAL   =
+000000             AS-MONEY-ROOT     + 
+000000             WS-AMOUNT-INTEREST.
 000000*
 000000     EXIT.                   
 000000*/-------------------------------------------------------------/*         
@@ -289,10 +310,10 @@
 000000         COMPUTE WS-AMOUNT-INTEREST     =                             
 000000                 AS-MONEY-ROOT          * 
 000000                 WS-RATE-INTEREST       * 
-000000                 WS-DAYS-ACTUAL         / 365                           
+000000                 WS-DAYS-ACTUAL         / CST-FIXED-VALUE-12
 000000*--- 定期口座（90日／180日／365日）の処理     
 000000     ELSE                                                   
-000000         IF HV-DAYS-CURRENT >= HV-DAYS-END                    
+000000         IF HV-DAYS-CURRENT-COMP >= HV-DAYS-END-COMP                    
 000000             EVALUATE AS-SAVING-TYPE                        
 000000                 WHEN CST-FIXED-03                               
 000000                     MOVE CST-FIXED-VALUE-03 
@@ -310,13 +331,13 @@
 000000             COMPUTE WS-AMOUNT-INTEREST =                      
 000000                     AS-MONEY-ROOT      * 
 000000                     WS-RATE-INTEREST   * 
-000000                     WS-DAYS-TERM       / 365                         
+000000                     WS-DAYS-TERM       / CST-FIXED-VALUE-12
 000000         ELSE       
-                   PERFORM EXEC-GET-NONTERM-RATE                                        
+000000             PERFORM EXEC-GET-NONTERM-RATE                              
 000000             COMPUTE WS-AMOUNT-INTEREST =                      
 000000                     AS-MONEY-ROOT      * 
 000000                     WS-RATE-NONTERM    * 
-000000                     WS-DAYS-ACTUAL     / 365                       
+000000                     WS-DAYS-ACTUAL     / CST-FIXED-VALUE-12        
 000000         END-IF                                             
 000000     END-IF.
 000000*                                                
@@ -342,7 +363,7 @@
 000000     IF SQLCODE < 0
 000000         MOVE 'UPDATE-DATABASE' 
 000000                                 TO 
-000000              HV-ABEND-BREAKPOINT                                      
+000000              CST-ABEND-BREAKPOINT                                      
 000000         PERFORM ABEND-PROGRAM                         
 000000     END-IF.                                                         
 000000*                                                     
@@ -375,7 +396,7 @@
 000000     END-EXEC.
 000000*---                                                               
 000000     IF SQLCODE < 0
-000000         MOVE 'FUNCTION-002'     TO      HV-ABEND-BREAKPOINT
+000000         MOVE 'FUNCTION-002'     TO      CST-ABEND-BREAKPOINT
 000000         PERFORM ABEND-PROGRAM                          
 000000     END-IF.                                              
 000000*                                                         
@@ -415,12 +436,11 @@
 000000             MOVE AS-ACC-ID      TO      AB-ACC-ID                     
 000000             PERFORM UPDATE-ACCOUNT-BALANCE                   
 000000             PERFORM UPDATE-SAVING-STATUS
-000000             ADD 1               TO      CST-COUNT-FUNC002
-000000             PERFORM DISPLAY-DETAIL-FUNC002                     
+000000             ADD 1               TO      CST-COUNT-FUNC002                    
 000000         WHEN OTHER                                          
 000000             MOVE 'FETCH-SAV-SETTLEMENT' 
 000000                                 TO 
-000000                  HV-ABEND-BREAKPOINT     
+000000                  CST-ABEND-BREAKPOINT     
 000000             PERFORM ABEND-PROGRAM                        
 000000     END-EVALUATE.
 000000*                                                  
@@ -441,7 +461,7 @@
 000000     IF SQLCODE < 0
 000000         MOVE 'UPDATE-ACCOUNT-BALANCE' 
 000000                                 TO 
-000000              HV-ABEND-BREAKPOINT         
+000000              CST-ABEND-BREAKPOINT         
 000000         PERFORM ABEND-PROGRAM                                  
 000000     END-IF. 
 000000*                                                        
@@ -462,7 +482,7 @@
 000000      IF SQLCODE < 0  
 000000         MOVE 'UPDATE-SAVING-STATUS' 
 000000                                 TO 
-000000              HV-ABEND-BREAKPOINT           
+000000              CST-ABEND-BREAKPOINT           
 000000          PERFORM ABEND-PROGRAM                                   
 000000      END-IF.
 000000*                                                         
@@ -526,7 +546,7 @@
 000000 ABEND-PROGRAM.
 000000*                                                  
 000000     DISPLAY 'ABEND-PROGRAM'.
-000000     DISPLAY 'ERROR MODULE : ' HV-ABEND-BREAKPOINT.
+000000     DISPLAY 'ERROR MODULE : ' CST-ABEND-BREAKPOINT.
 000000     DISPLAY 'SQLCODE      : ' SQLCODE.
 000000*
 000000     STOP RUN.  
