@@ -513,40 +513,29 @@
 000000*                                |
 000000*/-------------------------------------------------------------/*
 000000 CALCULATE-FUN001.
-000000*--- 注記: FUN_001 は現在時点での仮利息のみを計算する
-000000*--- 預金タイプごとに計算式を分ける
-000000     IF AS-SAVING-TYPE = CST-NON-TERM
+000000*--- 注記: FUN_001 は現在時点での仮利息を計算する
 000000*--- INTEREST = MONEY_ROOT * RATE * ACTUAL_DAYS / 365
-000000         COMPUTE WS-AMOUNT-INTEREST =
-000000                 AS-MONEY-ROOT      *
-000000                 WS-RATE-INTEREST   *
-000000                 WS-DAYS-ACTUAL     /
-000000                 CST-FIXED-VALUE-12
-000000     ELSE
-000000*--- INTEREST = MONEY_ROOT * RATE * ACTUAL_DAYS / 365
-000000         COMPUTE WS-AMOUNT-INTEREST =
-000000                 AS-MONEY-ROOT      *
-000000                 WS-RATE-INTEREST   *
-000000                 WS-DAYS-ACTUAL     /
-000000                 CST-FIXED-VALUE-12
-000000     END-IF.
-000000*
+000000     COMPUTE WS-AMOUNT-INTEREST =
+000000             AS-MONEY-ROOT      *
+000000             WS-RATE-INTEREST   *
+000000             WS-DAYS-ACTUAL     /
+000000             CST-FIXED-VALUE-12
+000000
 000000*--- MONEY = MONEY_ROOT + INTEREST
-000000     COMPUTE WS-AMOUNT-TOTAL        =
-000000             AS-MONEY-ROOT          + 
-000000             WS-AMOUNT-INTEREST.
-000000*
-000000     EXIT.                   
+000000     COMPUTE WS-AMOUNT-TOTAL =
+000000             AS-MONEY-ROOT + WS-AMOUNT-INTEREST.
+000000
+000000     EXIT.                 
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息計算ロジック
-000000* CALCULATE-FUN002       SECTION |      （FUN_002)                                
+000000* CALCULATE-FUN002       SECTION |      （FUN_002)                      
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 CALCULATE-FUN002.
 000000*
 000000*--- 定期なし口座の処理                                     
 000000     IF AS-SAVING-TYPE = CST-NON-TERM 
-000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * ACTUAL_DAYS / 365                            
+000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * ACTUAL_DAYS / 365           
 000000         COMPUTE WS-AMOUNT-INTEREST     =                             
 000000                 AS-MONEY-ROOT          * 
 000000                 WS-RATE-INTEREST       * 
