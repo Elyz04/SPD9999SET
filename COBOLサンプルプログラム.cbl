@@ -177,7 +177,7 @@
 000000                 START_DATE,                                            
 000000                 MONEY_ROOT                             
 000000         FROM    MYDB.DB_ACCOUNT_SAVINGS                     
-000000         WHERE STATUS = :CST-STATUS-1                     
+000000         WHERE   STATUS = :CST-STATUS-1                     
 000000     END-EXEC. 
 000000*--- OPEN CURSOR1                             
 000000     EXEC SQL                                                
@@ -221,7 +221,7 @@
 000000                 END_DATE,
 000000                 MONEY_ROOT
 000000         FROM    MYDB.DB_ACCOUNT_SAVINGS  
-000000         WHERE STATUS = :CST-STATUS-1                     
+000000         WHERE   STATUS = :CST-STATUS-1                     
 000000     END-EXEC.                                            
 000000*--- OPEN-CURSOR-2                                                
 000000     EXEC SQL                                             
@@ -575,7 +575,7 @@
 000000*                                              
 000000     EXEC SQL                                                      
 000000         UPDATE     MYDB.DB_ACCOUNT_SAVINGS                            
-000000         SET STATUS          = :CST-STATUS-9                         
+000000         SET        STATUS   = :CST-STATUS-9                         
 000000         WHERE      ORDER_ID = :AS-ORDER-ID                      
 000000     END-EXEC.                                                     
 000000*                
