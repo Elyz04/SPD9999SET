@@ -4,7 +4,7 @@
 000000*/-------------------------------------------------------------/*     
 000000*    PROGRAM-ID     :            PGM001                               
 000000*    CREATE DATE    :            2026/01/07                              
-000000*    AUTHOR         :            Elyz04                         
+000000*    AUTHOR         :            MinhPN43                         
 000000*    PURPOSE        :            利息計算および満期決済処理
 000000*/-------------------------------------------------------------/*   
 000000*    UPDATE         :                                           
@@ -48,20 +48,13 @@
 000000    03 WS-AMOUNT-TOTAL           PIC S9(13)V99    COMP-3.  
 000000    03 WS-RATE-INTEREST          PIC S9(01)V9(04) COMP-3.        
 000000    03 WS-RATE-NONTERM           PIC S9(01)V9(04) COMP-3.
-000000    03 WS-JCL-PARAM.
-000000       05 WS-PARAM-MODE          PIC X(01).
-000000       05 WS-PARAM-COMMA         PIC X(01).
-000000       05 WS-PARAM-DATE-X        PIC X(08).
-000000       05 WS-PARAM-DATE          PIC 9(08).
 000000*/-------------------------------------------------------------/*
 000000*  ホスト変数                                                    
 000000*/-------------------------------------------------------------/*     
 000000 01 HV-VARIABLES.                                       
 000000    03 HV-DAYS-CURRENT-COMP      PIC S9(09) COMP.               
 000000    03 HV-DAYS-START-COMP        PIC S9(09) COMP.               
-000000    03 HV-DAYS-END-COMP          PIC S9(09) COMP.
-000000    03 HV-DAYS-MIN-COMP          PIC S9(09) COMP.
-000000    03 HV-DAYS-MAX-COMP          PIC S9(09) COMP.                 
+000000    03 HV-DAYS-END-COMP          PIC S9(09) COMP.                 
 000000    03 HV-DATE-START-9           PIC 9(08).                    
 000000    03 HV-DATE-END-9             PIC 9(08).                     
 000000    03 HV-DATE-CURRENT-X         PIC X(21).                    
@@ -81,9 +74,7 @@
 000000    03 CST-NON-TERM              PIC X(10) VALUE 'NON-TERM'.
 000000    03 CST-FIXED-03              PIC X(10) VALUE 'FIXED-03'.
 000000    03 CST-FIXED-06              PIC X(10) VALUE 'FIXED-06'.
-000000    03 CST-FIXED-12              PIC X(10) VALUE 'FIXED-12'. 
-000000    03 CST-MIN-DATE              PIC 9(08) VALUE 19990101.  
-000000    03 CST-MAX-DATE              PIC 9(08) VALUE 20300101.       
+000000    03 CST-FIXED-12              PIC X(10) VALUE 'FIXED-12'.        
 000000    03 CST-FIXED-VALUE-03        PIC 9(03) VALUE 90.  
 000000    03 CST-FIXED-VALUE-06        PIC 9(03) VALUE 180.      
 000000    03 CST-FIXED-VALUE-12        PIC 9(03) VALUE 365. 
@@ -94,14 +85,14 @@
 000000    03 CST-PARAM-3               PIC X(01) VALUE '3'.
 000000*--- DEBUG / ABEND 処理  
 000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.     
-000000    03 CST-DEBUG-MODE            PIC X(1)   VALUE 'N'.
+000000    03 CST-DEBUG-MODE            PIC X(1)   VALUE 'Y'.
 000000*/-------------------------------------------------------------/*
 000000*  JCL パラメータ受け取りエリア                                                     
 000000*/-------------------------------------------------------------/* 
 000000 LINKAGE                         SECTION.
 000000 01 LNK-PARAM-JCL.
 000000    03 LNK-PARAM-LENGHT          PIC S9(04) COMP.
-000000    03 LNK-PARAM-DATA            PIC X(10).   
+000000    03 LNK-PARAM-DATA            PIC X(1).   
 000000*===============================================================*         
 000000*====        ＰＲＯＣＥＤＵＲＥ　　 　　ＤＩＶＩＳＩＯＮ        ====*         
 000000*===============================================================*       
@@ -112,11 +103,23 @@
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
 000000 MAIN.
+000000*    
+000000     IF CST-DEBUG-MODE = 'Y'
+000000         DISPLAY 'PARAMETER RECEIVED FROM JCL : ' 
+000000                                 LNK-PARAM-DATA
+000000     END-IF.
 000000*
 000000     PERFORM                     INIT-VARIABLE.
-000000     PERFORM                     HANDLE-JCL-PARAM.
+000000*    
+000000     DISPLAY                     CST-START-PGM-MSG.
+000000     IF  LNK-PARAM-DATA NOT   =  CST-PARAM-1
+000000     AND LNK-PARAM-DATA NOT   =  CST-PARAM-2
+000000     AND LNK-PARAM-DATA NOT   =  CST-PARAM-3
+000000         DISPLAY 'INVALID PARAM FROM JCL : ' LNK-PARAM-DATA
+000000         STOP RUN
+000000     END-IF.
 000000*
-000000     EVALUATE WS-PARAM-MODE
+000000     EVALUATE LNK-PARAM-DATA
 000000         WHEN CST-PARAM-1
 000000             PERFORM             FUNCTION-001
 000000         WHEN CST-PARAM-2
@@ -137,7 +140,7 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE          
 000000     ELSE
-000000         MOVE 'COMMIT FAILED'    TO      CST-ABEND-BREAKPOINT    
+000000         MOVE 'COMMIT'           TO      CST-ABEND-BREAKPOINT    
 000000         PERFORM ABEND-PROGRAM
 000000     END-IF.
 000000*
@@ -145,109 +148,8 @@
 000000*
 000000     STOP RUN.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: JCLパラメータ取得・分解処理               
-000000* HANDLE-JCL-PARAM       SECTION |      （COMMON）                          
-000000*                                |                                       
-000000*/-------------------------------------------------------------/*         
-000000 HANDLE-JCL-PARAM.
-000000     IF CST-DEBUG-MODE = 'Y'
-000000         DISPLAY 'PARAMETER RECEIVED FROM JCL : ' 
-000000                                 LNK-PARAM-DATA
-000000     END-IF.
-000000*
-000000     MOVE LNK-PARAM-DATA         TO     WS-JCL-PARAM
-000000*
-000000     IF LNK-PARAM-LENGHT > 1
-000000         UNSTRING LNK-PARAM-DATA
-000000             DELIMITED BY ','
-000000             INTO WS-PARAM-MODE
-000000                  WS-PARAM-COMMA
-000000                  WS-PARAM-DATE-X
-000000     ELSE
-000000         MOVE LNK-PARAM-DATA     TO     WS-PARAM-MODE
-000000         MOVE SPACES             TO     WS-PARAM-DATE-X
-000000     END-IF.
-000000*    
-000000     PERFORM                     CHECK-PARAM-INPUT.
-000000     DISPLAY                     CST-START-PGM-MSG.
-000000     EXIT.
-000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: JCLパラメータ妥当性チェック            
-000000* CHECK-PARAM-INPUT      SECTION |      （COMMON）                     
-000000*                                |                                       
-000000*/-------------------------------------------------------------/*         
-000000 CHECK-PARAM-INPUT.
-000000*---
-000000     EVALUATE WS-PARAM-MODE
-000000         WHEN CST-PARAM-1
-000000             CONTINUE
-000000         WHEN CST-PARAM-2
-000000             CONTINUE
-000000         WHEN CST-PARAM-3
-000000             CONTINUE
-000000         WHEN OTHER
-000000             IF CST-DEBUG-MODE = 'Y'
-000000                 DISPLAY 'INVALID PARAM OPTION JCL : ' 
-000000                 WS-PARAM-MODE
-000000             END-IF
-000000             MOVE 'CHECK-PARAM-INPUT'
-000000                                 TO 
-000000                  CST-ABEND-BREAKPOINT
-000000             PERFORM ABEND-PROGRAM
-000000     END-EVALUATE.
-000000*---
-000000     EVALUATE TRUE
-000000         WHEN WS-PARAM-DATE-X = SPACES
-000000             MOVE ZERO TO WS-PARAM-DATE
-000000             EXIT
-000000         WHEN WS-PARAM-DATE-X NOT NUMERIC
-000000             IF CST-DEBUG-MODE = 'Y'
-000000                 DISPLAY 'DATE PARAM NOT NUMERIC : ' 
-000000                 WS-PARAM-DATE-X
-000000             END-IF
-000000             MOVE 'CHECK-PARAM-INPUT'
-000000                                 TO 
-000000                  CST-ABEND-BREAKPOINT
-000000             PERFORM ABEND-PROGRAM
-000000         WHEN WS-PARAM-DATE-X = '00000000'
-000000             IF CST-DEBUG-MODE = 'Y'
-000000                 DISPLAY 'DATE PARAM IS ZERO'
-000000             END-IF
-000000             MOVE 'CHECK-PARAM-INPUT'
-000000                                 TO 
-000000                  CST-ABEND-BREAKPOINT
-000000             PERFORM ABEND-PROGRAM
-000000         WHEN OTHER
-000000             MOVE WS-PARAM-DATE-X 
-000000                                 TO 
-000000                  WS-PARAM-DATE
-000000     END-EVALUATE.
-000000*---
-000000     COMPUTE HV-DATE-START-9 =
-000000         FUNCTION NUMVAL(WS-PARAM-DATE)
-000000     COMPUTE HV-DAYS-START-COMP =
-000000         FUNCTION INTEGER-OF-DATE(HV-DATE-START-9)
-000000     COMPUTE HV-DAYS-MIN-COMP =
-000000         FUNCTION INTEGER-OF-DATE(CST-MIN-DATE)
-000000     COMPUTE HV-DAYS-MAX-COMP =
-000000         FUNCTION INTEGER-OF-DATE(CST-MAX-DATE)
-000000*---
-000000     IF HV-DAYS-START-COMP < HV-DAYS-MIN-COMP
-000000     OR HV-DAYS-START-COMP > HV-DAYS-MAX-COMP
-000000         IF CST-DEBUG-MODE = 'Y'
-000000             DISPLAY 'DATE PARAM OUT OF RANGE : ' 
-000000             WS-PARAM-DATE
-000000         END-IF
-000000         MOVE 'CHECK-PARAM-INPUT'
-000000                                 TO 
-000000              CST-ABEND-BREAKPOINT
-000000         PERFORM ABEND-PROGRAM
-000000     END-IF.
-000000*---
-000000     EXIT.
-000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 変数初期化                       
-000000* INITIALIZE             SECTION |      （COMMON）                          
+000000* INITIALIZE             SECTION |      （COMMON）                        
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*         
 000000 INIT-VARIABLE.
@@ -285,7 +187,7 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT               
+000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT              
 000000         PERFORM ABEND-PROGRAM                            
 000000     END-IF.                                                 
 000000     PERFORM UNTIL CST-FLAG-1 = 'Y'                            
@@ -301,7 +203,7 @@
 000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 決済処理                         
-000000* FUNCTION-002           SECTION |      （FUN_001)                    
+000000* FUNCTION-002           SECTION |      （FUN_001)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*         
 000000 FUNCTION-002.
@@ -383,23 +285,17 @@
 000000     EXIT.                                                     
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 現在日付取得                    
-000000* GET-CURR-DATE-FUN001   SECTION |      （FUN_001）                      
+000000* GET-CURR-DATE-FUN001   SECTION |      （FUN_001）                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 GET-CURR-DATE-FUN001.
 000000*
-000000     IF WS-PARAM-DATE = ZERO
-000000         MOVE FUNCTION CURRENT-DATE 
+000000     MOVE FUNCTION CURRENT-DATE
 000000                                 TO 
-000000                       HV-DATE-CURRENT-X
-000000         MOVE HV-DATE-CURRENT-X(1:8) 
+000000                   HV-DATE-CURRENT-X.
+000000     MOVE HV-DATE-CURRENT-X(1:8)
 000000                                 TO 
-000000              HV-DATE-CURRENT-9
-000000     ELSE
-000000         MOVE WS-PARAM-DATE          
-000000                                 TO 
-000000              HV-DATE-CURRENT-9
-000000     END-IF
+000000          HV-DATE-CURRENT-9.
 000000*--- 現在日付を日数に変換
 000000     COMPUTE HV-DAYS-CURRENT-COMP =
 000000         FUNCTION INTEGER-OF-DATE(HV-DATE-CURRENT-9).
@@ -419,23 +315,18 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 現在日付および期間日数取得                    
-000000* GET-CURR-DATE-FUN002   SECTION |      （FUN_002）                     
+000000* GET-CURR-DATE-FUN002   SECTION |      （FUN_002）                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 GET-CURR-DATE-FUN002.
-000000*
-000000     IF WS-PARAM-DATE = ZERO
-000000         MOVE FUNCTION CURRENT-DATE 
+000000*--- GET SYSTEM CURRENT DATE YYYYMMDDHHMMSSCC±HHMM (21)
+000000     MOVE FUNCTION CURRENT-DATE
 000000                                 TO 
-000000                       HV-DATE-CURRENT-X
-000000         MOVE HV-DATE-CURRENT-X(1:8) 
+000000                   HV-DATE-CURRENT-X.
+000000*--- EXTRACT DATE PART YYYYMMDD (8)
+000000     MOVE HV-DATE-CURRENT-X(1:8)
 000000                                 TO 
-000000              HV-DATE-CURRENT-9
-000000     ELSE
-000000         MOVE WS-PARAM-DATE          
-000000                                 TO 
-000000              HV-DATE-CURRENT-9
-000000     END-IF.
+000000          HV-DATE-CURRENT-9.
 000000*--- CONVERT CURRENT DATE TO INTEGER DAYS
 000000     COMPUTE HV-DAYS-CURRENT-COMP =
 000000         FUNCTION INTEGER-OF-DATE(HV-DATE-CURRENT-9).
@@ -512,7 +403,7 @@
 000000* CALCULATE-FUN001       SECTION |      （FUN_001)
 000000*                                |
 000000*/-------------------------------------------------------------/*
-000000 CALCULATE-FUN001.
+000000 CACULATE-FUN001.
 000000*--- 注記: FUN_001 は現在時点での仮利息を計算する
 000000*--- INTEREST = MONEY_ROOT * RATE * ACTUAL_DAYS / 365
 000000     COMPUTE WS-AMOUNT-INTEREST =
@@ -520,22 +411,22 @@
 000000             WS-RATE-INTEREST   *
 000000             WS-DAYS-ACTUAL     /
 000000             CST-FIXED-VALUE-12
-000000
 000000*--- MONEY = MONEY_ROOT + INTEREST
-000000     COMPUTE WS-AMOUNT-TOTAL =
-000000             AS-MONEY-ROOT + WS-AMOUNT-INTEREST.
-000000
+000000     COMPUTE WS-AMOUNT-TOTAL    =
+000000             AS-MONEY-ROOT      + 
+000000             WS-AMOUNT-INTEREST.
+000000* 
 000000     EXIT.                 
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息計算ロジック
-000000* CALCULATE-FUN002       SECTION |      （FUN_002)                      
+000000* CALCULATE-FUN002       SECTION |      （FUN_002)                                
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 CALCULATE-FUN002.
 000000*
 000000*--- 定期なし口座の処理                                     
 000000     IF AS-SAVING-TYPE = CST-NON-TERM 
-000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * ACTUAL_DAYS / 365           
+000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * ACTUAL_DAYS / 365                            
 000000         COMPUTE WS-AMOUNT-INTEREST     =                             
 000000                 AS-MONEY-ROOT          * 
 000000                 WS-RATE-INTEREST       * 
@@ -666,7 +557,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 預金ステータス更新              
-000000* UPDATE-SAVING-STATUS   SECTION |      （FUN_002)                         
+000000* UPDATE-SAVING-STATUS   SECTION |      （FUN_002)                                
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
 000000 UPDATE-SAVING-STATUS.
@@ -689,7 +580,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済明細表示                
-000000* DISPLAY-DETAIL-FUN001  SECTION |      （FUN_001)                       
+000000* DISPLAY-DETAIL-FUN001  SECTION |      （FUN_001)                               
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*  
 000000*
@@ -707,7 +598,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済明細表示                
-000000* DISPLAY-DETAIL-FUN002  SECTION |      （FUN_002)                       
+000000* DISPLAY-DETAIL-FUN002  SECTION |      （FUN_002)                               
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*  
 000000*
@@ -726,7 +617,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済処理件数表示                
-000000* DISPLAY-TOTAL          SECTION |      （COMMON）                        
+000000* DISPLAY-TOTAL          SECTION |      （COMMON）                                 
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 DISPLAY-TOTAL.
@@ -740,7 +631,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 異常終了処理                     
-000000* ABEND-PROGRAM          SECTION |      （COMMON）                   
+000000* ABEND-PROGRAM          SECTION |      （COMMON）                                
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
 000000 ABEND-PROGRAM.
