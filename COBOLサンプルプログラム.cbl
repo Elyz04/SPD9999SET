@@ -8,10 +8,10 @@
 000000*    PURPOSE        :            利息計算および満期決済処理
 000000*/-------------------------------------------------------------/*   
 000000*    UPDATE         :                                           
-000000*        2026/01/08 : データベース更新 (DBの利息と合計金額更新)       
+000000*        2026/01/08 : FUN_001 : 利息計算（プレビューのみ、DB更新なし）      
 000000*        2026/01/09 : SQLエラー時はABEND処理                     
 000000*        2026/01/10 : 対象はDB_ACCOUNT_SAVINGSテーブル            
-000000*        2026/01/11 : INTEREST と MONEY フィールドを更新          
+000000*        2026/01/11 : FUN_002 : 満期決済および残高更新         
 000000*        2026/01/13 : 処理ロジックの最終調整（INTEREST と MONEY 更新）
 000000*        2026/01/15 : ...
 000000*/-------------------------------------------------------------/*
@@ -83,6 +83,8 @@
 000000    03 CST-PARAM-1               PIC X(01) VALUE '1'.
 000000    03 CST-PARAM-2               PIC X(01) VALUE '2'.
 000000    03 CST-PARAM-3               PIC X(01) VALUE '3'.
+000000    03 CST-SQLCODE-0             PIC X(01) VALUE 0.
+000000    03 CST-SQLCODE-100           PIC X(01) VALUE 100.
 000000*--- DEBUG / ABEND 処理  
 000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.     
 000000    03 CST-DEBUG-MODE            PIC X(1)   VALUE 'Y'.
@@ -137,7 +139,7 @@
 000000         COMMIT
 000000     END-EXEC.
 000000*---
-000000     IF SQLCODE = 0
+000000     IF SQLCODE = CST-SQLCODE-0
 000000         CONTINUE          
 000000     ELSE
 000000         MOVE 'COMMIT'           TO      CST-ABEND-BREAKPOINT    
@@ -184,7 +186,7 @@
 000000         OPEN C1                                           
 000000     END-EXEC.
 000000*---                                      
-000000     IF SQLCODE = 0
+000000     IF SQLCODE = CST-SQLCODE-0
 000000         CONTINUE
 000000     ELSE  
 000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT              
@@ -228,7 +230,7 @@
 000000         OPEN C2                                        
 000000     END-EXEC.
 000000*---                                                               
-000000     IF SQLCODE = 0
+000000     IF SQLCODE = CST-SQLCODE-0
 000000         CONTINUE
 000000     ELSE
 000000         MOVE 'FUNCTION-002'     TO      CST-ABEND-BREAKPOINT
@@ -263,13 +265,12 @@
 000000     END-EXEC.                                                 
 000000*                                                              
 000000     EVALUATE SQLCODE                                          
-000000         WHEN 100                                                
+000000         WHEN CST-SQLCODE-100
 000000             MOVE 'Y'            TO            CST-FLAG-1             
-000000         WHEN 0                                                  
+000000         WHEN CST-SQLCODE-0                                           
 000000             PERFORM GET-CURR-DATE-FUN001
 000000             PERFORM EXEC-GET-INTEREST-RATE                             
 000000             PERFORM CALCULATE-FUN001                     
-000000             PERFORM UPDATE-DATABASE
 000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
 000000             IF CST-DEBUG-MODE = 'Y'
 000000                 PERFORM DISPLAY-DETAIL-FUN001
@@ -364,7 +365,7 @@
 000000         WHERE  SAVING_TYPE = :AS-SAVING-TYPE                   
 000000     END-EXEC.
 000000*                                                      
-000000     IF SQLCODE = 0
+000000     IF SQLCODE = CST-SQLCODE-0
 000000         CONTINUE
 000000     ELSE  
 000000         MOVE 'EXEC-GET-INTEREST-RATE' 
@@ -388,7 +389,7 @@
 000000         WHERE   SAVING_TYPE = :CST-NON-TERM                     
 000000     END-EXEC.
 000000*                                                        
-000000     IF SQLCODE = 0
+000000     IF SQLCODE = CST-SQLCODE-0
 000000         CONTINUE
 000000     ELSE  
 000000         MOVE 'EXEC-GET-NONTERM-RATE' 
@@ -467,31 +468,7 @@
 000000             AS-MONEY-ROOT              + 
 000000             WS-AMOUNT-INTEREST.
 000000*             
-000000     EXIT.     
-000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: データベース更新                 
-000000* UPDATE-DATABASE        SECTION |      （FUN_001)                       
-000000*                                |                                       
-000000*/-------------------------------------------------------------/*       
-000000 UPDATE-DATABASE.
-000000*                                                     
-000000     EXEC SQL                                            
-000000         UPDATE  MYDB.DB_ACCOUNT_SAVINGS                  
-000000         SET     INTEREST = :WS-AMOUNT-INTEREST,                
-000000                 MONEY    = :WS-AMOUNT-TOTAL                  
-000000         WHERE   ORDER_ID = :AS-ORDER-ID                   
-000000     END-EXEC.
-000000*                                                     
-000000     IF SQLCODE = 0
-000000         CONTINUE
-000000     ELSE
-000000         MOVE 'UPDATE-DATABASE' 
-000000                                 TO 
-000000              CST-ABEND-BREAKPOINT                                      
-000000         PERFORM ABEND-PROGRAM                         
-000000     END-IF.                                                         
-000000*                                                     
-000000     EXIT.                                               
+000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データ取得・決済計算              
 000000* FETCH-SAV-SETTLEMENT   SECTION |      （FUN_002)                         
@@ -510,9 +487,9 @@
 000000     END-EXEC.  
 000000*                                          
 000000     EVALUATE SQLCODE                                     
-000000         WHEN 100                                            
+000000         WHEN CST-SQLCODE-100                                           
 000000             MOVE 'Y'            TO      CST-FLAG-2                      
-000000         WHEN 0 
+000000         WHEN CST-SQLCODE-0
 000000             PERFORM GET-CURR-DATE-FUN002
 000000             PERFORM EXEC-GET-INTEREST-RATE
 000000             PERFORM CALCULATE-FUN002
@@ -545,7 +522,7 @@
 000000         WHERE   ACC_ID  = :AB-ACC-ID                        
 000000     END-EXEC.
 000000*                                              
-000000     IF SQLCODE = 0
+000000     IF SQLCODE = CST-SQLCODE-0
 000000         CONTINUE
 000000     ELSE
 000000         MOVE 'UPDATE-ACCOUNT-BALANCE' 
@@ -568,7 +545,7 @@
 000000         WHERE      ORDER_ID = :AS-ORDER-ID                      
 000000     END-EXEC.                                                     
 000000*                
-000000     IF SQLCODE = 0
+000000     IF SQLCODE = CST-SQLCODE-0
 000000        CONTINUE
 000000     ELSE  
 000000        MOVE 'UPDATE-SAVING-STATUS' 
