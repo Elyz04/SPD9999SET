@@ -78,13 +78,13 @@
 000000    03 CST-FIXED-VALUE-03        PIC 9(03) VALUE 90.  
 000000    03 CST-FIXED-VALUE-06        PIC 9(03) VALUE 180.      
 000000    03 CST-FIXED-VALUE-12        PIC 9(03) VALUE 365. 
-000000    03 CST-COUNT-FUNC001         PIC 9(05) VALUE 0.  
+000000    03 CST-COUNT-FUNC001         PIC 9(05) VALUE 0.
+000000    03 CST-COUNT-UPD-BALANCE     PIC 9(05) VALUE 0.
+000000    03 CST-COUNT-UPD-STATUS      PIC 9(05) VALUE 0.  
 000000    03 CST-COUNT-FUNC002         PIC 9(05) VALUE 0.
 000000    03 CST-PARAM-1               PIC X(01) VALUE '1'.
 000000    03 CST-PARAM-2               PIC X(01) VALUE '2'.
 000000    03 CST-PARAM-3               PIC X(01) VALUE '3'.
-000000    03 CST-SQLCODE-0             PIC X(01) VALUE 0.
-000000    03 CST-SQLCODE-100           PIC X(01) VALUE 100.
 000000*--- DEBUG / ABEND 処理  
 000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.     
 000000    03 CST-DEBUG-MODE            PIC X(1)   VALUE 'Y'.
@@ -123,12 +123,20 @@
 000000*
 000000     EVALUATE LNK-PARAM-DATA
 000000         WHEN CST-PARAM-1
+000000             DISPLAY 'START FUN_001 : CALCULATE_INTEREST'
 000000             PERFORM             FUNCTION-001
+000000             DISPLAY CST-DONE-FNC001-MSG
 000000         WHEN CST-PARAM-2
+000000             DISPLAY 'START FUN_002 : SETTLEMENT'
 000000             PERFORM             FUNCTION-002
+000000             DISPLAY CST-DONE-FNC002-MSG
 000000         WHEN CST-PARAM-3
+000000             DISPLAY 'START FUN_001 : CALCULATE_INTEREST'
 000000             PERFORM             FUNCTION-001
+000000             DISPLAY CST-DONE-FNC001-MSG
+000000             DISPLAY 'START FUN_002 : SETTLEMENT'
 000000             PERFORM             FUNCTION-002
+000000             DISPLAY CST-DONE-FNC002-MSG
 000000     END-EVALUATE. 
 000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
 000000     IF CST-DEBUG-MODE = 'Y'
@@ -139,7 +147,7 @@
 000000         COMMIT
 000000     END-EXEC.
 000000*---
-000000     IF SQLCODE = CST-SQLCODE-0
+000000     IF SQLCODE = 0
 000000         CONTINUE          
 000000     ELSE
 000000         MOVE 'COMMIT'           TO      CST-ABEND-BREAKPOINT    
@@ -165,9 +173,7 @@
 000000* FUNCTION-001           SECTION |      （FUN_001)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
-000000 FUNCTION-001.
-000000*                                                 
-000000     DISPLAY 'START FUN_001 : CALCULATE_INTEREST'.              
+000000 FUNCTION-001.                                                             
 000000*    
 000000     MOVE 'N'                    TO     CST-FLAG-1.
 000000* 
@@ -186,7 +192,7 @@
 000000         OPEN C1                                           
 000000     END-EXEC.
 000000*---                                      
-000000     IF SQLCODE = CST-SQLCODE-0
+000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
 000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT              
@@ -200,8 +206,6 @@
 000000         CLOSE C1                                          
 000000     END-EXEC.
 000000*---      
-000000     DISPLAY CST-DONE-FNC001-MSG.
-000000*
 000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 決済処理                         
@@ -209,9 +213,7 @@
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*         
 000000 FUNCTION-002.
-000000*                                                
-000000     DISPLAY 'START FUN_002 : SETTLEMENT'.
-000000*             
+000000*                                                            
 000000     MOVE 'N'                    TO      CST-FLAG-2.
 000000*                               
 000000     EXEC SQL                                            
@@ -230,7 +232,7 @@
 000000         OPEN C2                                        
 000000     END-EXEC.
 000000*---                                                               
-000000     IF SQLCODE = CST-SQLCODE-0
+000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE
 000000         MOVE 'FUNCTION-002'     TO      CST-ABEND-BREAKPOINT
@@ -265,9 +267,9 @@
 000000     END-EXEC.                                                 
 000000*                                                              
 000000     EVALUATE SQLCODE                                          
-000000         WHEN CST-SQLCODE-100
+000000         WHEN 100
 000000             MOVE 'Y'            TO            CST-FLAG-1             
-000000         WHEN CST-SQLCODE-0                                           
+000000         WHEN 0                                           
 000000             PERFORM GET-CURR-DATE-FUN001
 000000             PERFORM EXEC-GET-INTEREST-RATE                             
 000000             PERFORM CALCULATE-FUN001                     
@@ -366,7 +368,7 @@
 000000         WHERE  SAVING_TYPE = :AS-SAVING-TYPE                   
 000000     END-EXEC.
 000000*                                                      
-000000     IF SQLCODE = CST-SQLCODE-0
+000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
 000000         MOVE 'EXEC-GET-INTEREST-RATE' 
@@ -390,7 +392,7 @@
 000000         WHERE   SAVING_TYPE = :CST-NON-TERM                     
 000000     END-EXEC.
 000000*                                                        
-000000     IF SQLCODE = CST-SQLCODE-0
+000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
 000000         MOVE 'EXEC-GET-NONTERM-RATE' 
@@ -406,13 +408,24 @@
 000000*                                |
 000000*/-------------------------------------------------------------/*
 000000 CALCULATE-FUN001.
-000000*--- 注記: FUN_001 は現在時点での仮利息を計算する
-000000*--- INTEREST = MONEY_ROOT * RATE * ACTUAL_DAYS / 365
-000000     COMPUTE WS-AMOUNT-INTEREST =
-000000             AS-MONEY-ROOT      *
-000000             WS-RATE-INTEREST   *
-000000             WS-DAYS-ACTUAL     /
-000000             CST-FIXED-VALUE-12
+000000     IF AS-SAVING-TYPE = CST-NON-TERM
+000000* 非定期預金の利息計算（実日数ベース）
+000000* INTEREST = MONEY_ROOT × INTEREST_RATE × ACTUAL_DAYS / 365
+000000         COMPUTE WS-AMOUNT-INTEREST =
+000000                 AS-MONEY-ROOT    *
+000000                 WS-RATE-INTEREST *
+000000                 WS-DAYS-ACTUAL   / 
+000000                 CST-FIXED-VALUE-12
+000000     ELSE
+000000* 定期預金の利息計算（プレビュー）
+000000* ※ 満期／中途解約の判定はFUN_002で実施
+000000* INTEREST = MONEY_ROOT × INTEREST_RATE × ACTUAL_DAYS / 365
+000000         COMPUTE WS-AMOUNT-INTEREST =
+000000                 AS-MONEY-ROOT    *
+000000                 WS-RATE-INTEREST *
+000000                 WS-DAYS-ACTUAL   / 
+000000                 CST-FIXED-VALUE-12
+000000     END-IF.
 000000*--- MONEY = MONEY_ROOT + INTEREST
 000000     COMPUTE WS-AMOUNT-TOTAL    =
 000000             AS-MONEY-ROOT      + 
@@ -488,15 +501,17 @@
 000000     END-EXEC.  
 000000*                                          
 000000     EVALUATE SQLCODE                                     
-000000         WHEN CST-SQLCODE-100                                           
+000000         WHEN 100                                           
 000000             MOVE 'Y'            TO      CST-FLAG-2                      
-000000         WHEN CST-SQLCODE-0
+000000         WHEN 0
 000000             PERFORM GET-CURR-DATE-FUN002
 000000             PERFORM EXEC-GET-INTEREST-RATE
 000000             PERFORM CALCULATE-FUN002
 000000             MOVE AS-ACC-ID      TO      AB-ACC-ID                     
-000000             PERFORM UPDATE-ACCOUNT-BALANCE                   
+000000             PERFORM UPDATE-ACCOUNT-BALANCE
+000000             ADD 1 TO CST-COUNT-UPD-BALANCE                   
 000000             PERFORM UPDATE-SAVING-STATUS
+000000             ADD 1 TO CST-COUNT-UPD-STATUS
 000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
 000000             IF CST-DEBUG-MODE = 'Y'
 000000                 PERFORM DISPLAY-DETAIL-FUN002
@@ -523,7 +538,7 @@
 000000         WHERE   ACC_ID  = :AB-ACC-ID                        
 000000     END-EXEC.
 000000*                                              
-000000     IF SQLCODE = CST-SQLCODE-0
+000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE
 000000         MOVE 'UPDATE-ACCOUNT-BALANCE' 
@@ -546,7 +561,7 @@
 000000         WHERE      ORDER_ID = :AS-ORDER-ID                      
 000000     END-EXEC.                                                     
 000000*                
-000000     IF SQLCODE = CST-SQLCODE-0
+000000     IF SQLCODE = 0
 000000        CONTINUE
 000000     ELSE  
 000000        MOVE 'UPDATE-SAVING-STATUS' 
@@ -604,6 +619,10 @@
 000000*
 000000     DISPLAY 'TOTAL ACCOUNTS PROCESSED IN FUNCTION-002 : ' 
 000000     CST-COUNT-FUNC002.
+000000     DISPLAY 'TOTAL ACCOUNTS UPDATED BALANCE           : '
+000000     CST-COUNT-UPD-BALANCE.
+000000     DISPLAY 'TOTAL ACCOUNTS UPDATED SAVING STATUS     : '
+000000     CST-COUNT-UPD-STATUS.
 000000*
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
@@ -622,6 +641,14 @@
 000000     EXEC SQL
 000000         ROLLBACK
 000000     END-EXEC.
+000000*--- ROLLBACK 結果確認
+000000     IF SQLCODE = 0
+000000         DISPLAY 'ROLLBACK SUCCESS'
+000000     ELSE
+000000         DISPLAY 'ROLLBACK FAILED'
+000000         DISPLAY 'ROLLBACK SQLCODE  : ' SQLCODE
+000000         DISPLAY 'ROLLBACK SQLSTATE : ' SQLSTATE
+000000     END-IF.
 000000*
 000000     STOP RUN.  
 000000*===============================================================*         
