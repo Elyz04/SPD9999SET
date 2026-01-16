@@ -290,10 +290,11 @@
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 GET-CURR-DATE-FUN001.
-000000*
+000000*--- GET SYSTEM CURRENT DATE YYYYMMDDHHMMSSCC±HHMM (21)
 000000     MOVE FUNCTION CURRENT-DATE
 000000                                 TO 
 000000                   HV-DATE-CURRENT-X.
+000000*--- EXTRACT DATE PART YYYYMMDD (8)
 000000     MOVE HV-DATE-CURRENT-X(1:8)
 000000                                 TO 
 000000          HV-DATE-CURRENT-9.
