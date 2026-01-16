@@ -99,7 +99,7 @@
 000000 PROCEDURE                       DIVISION USING LNK-PARAM-JCL.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: メイン処理                       
-000000* MAIN                   SECTION |      （MAIN）                                 
+000000* MAIN                   SECTION |      （MAIN）                           
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
 000000 MAIN.
@@ -203,7 +203,7 @@
 000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 決済処理                         
-000000* FUNCTION-002           SECTION |      （FUN_001)                        
+000000* FUNCTION-002           SECTION |      （FUN_002)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*         
 000000 FUNCTION-002.
@@ -352,7 +352,7 @@
 000000     EXIT.                                             
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利率取得                         
-000000* EXEC-GET-INTEREST-RATE SECTION |      （COMMON）                                 
+000000* EXEC-GET-INTEREST-RATE SECTION |      （COMMON）                         
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*      
 000000 EXEC-GET-INTEREST-RATE.
@@ -403,7 +403,7 @@
 000000* CALCULATE-FUN001       SECTION |      （FUN_001)
 000000*                                |
 000000*/-------------------------------------------------------------/*
-000000 CACULATE-FUN001.
+000000 CALCULATE-FUN001.
 000000*--- 注記: FUN_001 は現在時点での仮利息を計算する
 000000*--- INTEREST = MONEY_ROOT * RATE * ACTUAL_DAYS / 365
 000000     COMPUTE WS-AMOUNT-INTEREST =
@@ -419,14 +419,14 @@
 000000     EXIT.                 
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息計算ロジック
-000000* CALCULATE-FUN002       SECTION |      （FUN_002)                                
+000000* CALCULATE-FUN002       SECTION |      （FUN_002)                   
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 CALCULATE-FUN002.
 000000*
 000000*--- 定期なし口座の処理                                     
 000000     IF AS-SAVING-TYPE = CST-NON-TERM 
-000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * ACTUAL_DAYS / 365                            
+000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * ACTUAL_DAYS / 365          
 000000         COMPUTE WS-AMOUNT-INTEREST     =                             
 000000                 AS-MONEY-ROOT          * 
 000000                 WS-RATE-INTEREST       * 
@@ -448,21 +448,21 @@
 000000                                 TO 
 000000                          WS-DAYS-TERM        
 000000             END-EVALUATE 
-000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * TERM_DAYS / 365                                  
+000000*--- INTEREST = MONEY_ROOT * INTEREST_RATE * TERM_DAYS / 365          
 000000             COMPUTE WS-AMOUNT-INTEREST =                      
 000000                     AS-MONEY-ROOT      * 
 000000                     WS-RATE-INTEREST   * 
 000000                     WS-DAYS-TERM       / CST-FIXED-VALUE-12
 000000         ELSE       
 000000             PERFORM EXEC-GET-NONTERM-RATE
-000000*--- INTEREST = MONEY_ROOT * NONTERM_RATE * ACTUAL_DAYS / 365                              
+000000*--- INTEREST = MONEY_ROOT * NONTERM_RATE * ACTUAL_DAYS / 365           
 000000             COMPUTE WS-AMOUNT-INTEREST =                      
 000000                     AS-MONEY-ROOT      * 
 000000                     WS-RATE-NONTERM    * 
 000000                     WS-DAYS-ACTUAL     / CST-FIXED-VALUE-12        
 000000         END-IF                                             
 000000     END-IF.
-000000*--- MONEY = MONEY_ROOT + INTEREST                                                
+000000*--- MONEY = MONEY_ROOT + INTEREST                                      
 000000     COMPUTE WS-AMOUNT-TOTAL            =                               
 000000             AS-MONEY-ROOT              + 
 000000             WS-AMOUNT-INTEREST.
@@ -470,7 +470,7 @@
 000000     EXIT.     
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データベース更新                 
-000000* UPDATE-DATABASE        SECTION |      （FUN_001)                                 
+000000* UPDATE-DATABASE        SECTION |      （FUN_001)                       
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*       
 000000 UPDATE-DATABASE.
@@ -494,7 +494,7 @@
 000000     EXIT.                                               
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データ取得・決済計算              
-000000* FETCH-SAV-SETTLEMENT   SECTION |      （FUN_002)                                
+000000* FETCH-SAV-SETTLEMENT   SECTION |      （FUN_002)                         
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 FETCH-SAV-SETTLEMENT.                                              
@@ -534,7 +534,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 口座残高更新                 
-000000* UPDATE-ACCOUNT-BALANCE SECTION |      （FUN_002)                                
+000000* UPDATE-ACCOUNT-BALANCE SECTION |      （FUN_002)                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 UPDATE-ACCOUNT-BALANCE.
@@ -557,7 +557,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 預金ステータス更新              
-000000* UPDATE-SAVING-STATUS   SECTION |      （FUN_002)                                
+000000* UPDATE-SAVING-STATUS   SECTION |      （FUN_002)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
 000000 UPDATE-SAVING-STATUS.
@@ -580,7 +580,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済明細表示                
-000000* DISPLAY-DETAIL-FUN001  SECTION |      （FUN_001)                               
+000000* DISPLAY-DETAIL-FUN001  SECTION |      （FUN_001)                    
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*  
 000000*
@@ -598,7 +598,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済明細表示                
-000000* DISPLAY-DETAIL-FUN002  SECTION |      （FUN_002)                               
+000000* DISPLAY-DETAIL-FUN002  SECTION |      （FUN_002)                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*  
 000000*
@@ -611,13 +611,12 @@
 000000     DISPLAY 'MONEY_ROOT  : ' AS-MONEY-ROOT.
 000000     DISPLAY 'INTEREST    : ' WS-AMOUNT-INTEREST.
 000000     DISPLAY 'TOTAL       : ' WS-AMOUNT-TOTAL.
-000000     DISPLAY 'BALANCE     : ' AS-MONEY.
 000000     DISPLAY 'STATUS      : ' CST-STATUS-9.
 000000*
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済処理件数表示                
-000000* DISPLAY-TOTAL          SECTION |      （COMMON）                                 
+000000* DISPLAY-TOTAL          SECTION |      （COMMON）                    
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
 000000 DISPLAY-TOTAL.
@@ -631,7 +630,7 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 異常終了処理                     
-000000* ABEND-PROGRAM          SECTION |      （COMMON）                                
+000000* ABEND-PROGRAM          SECTION |      （COMMON）                      
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
 000000 ABEND-PROGRAM.
