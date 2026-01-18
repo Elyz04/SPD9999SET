@@ -13,7 +13,10 @@
 000000*        2026/01/10 : 対象はDB_ACCOUNT_SAVINGSテーブル            
 000000*        2026/01/11 : FUN_002 : 満期決済および残高更新         
 000000*        2026/01/13 : 処理ロジックの最終調整（INTEREST と MONEY 更新）
-000000*        2026/01/15 : ...
+000000*        2026/01/15 : プログラムを再構築し、異常終了の詳細を追加し
+000000*                     ます。エラーを明確に説明します。
+000000*        2026/01/18 : 送信入力ACCIDを更新、1アカウントの決済のみ処理、
+000000*                     送信入力検証パラメータを追加
 000000*/-------------------------------------------------------------/*
 000000 ENVIRONMENT                     DIVISION.         
 000000 DATA                            DIVISION.                                
@@ -47,7 +50,11 @@
 000000    03 WS-AMOUNT-INTEREST        PIC S9(13)V99    COMP-3.         
 000000    03 WS-AMOUNT-TOTAL           PIC S9(13)V99    COMP-3.  
 000000    03 WS-RATE-INTEREST          PIC S9(01)V9(04) COMP-3.        
-000000    03 WS-RATE-NONTERM           PIC S9(01)V9(04) COMP-3.
+000000    03 WS-RATE-NONTERM           PIC S9(01)V9(04) COMP-3.                    
+000000    03 WS-PARAM-FUNC             PIC X(01).               
+000000    03 WS-PARAM-ACCID-CHAR       PIC X(8).   
+000000    03 WS-PARAM-ACCID-DISP       PIC 9(8). 
+000000    03 WS-PARAM-ACCID            PIC S9(8) COMP.  
 000000*/-------------------------------------------------------------/*
 000000*  ホスト変数                                                    
 000000*/-------------------------------------------------------------/*     
@@ -69,8 +76,8 @@
 000000    03 CST-DONE-FNC002-MSG       PIC X(13) VALUE 'DONE FUNC_002'.
 000000    03 CST-STATUS-1              PIC X(01) VALUE '1'.          
 000000    03 CST-STATUS-9              PIC X(01) VALUE '9'.          
-000000    03 CST-FLAG-1                PIC X(01) VALUE 'N'. 
-000000    03 CST-FLAG-2                PIC X(01) VALUE 'N'.  
+000000    03 CST-EOF-CRS1              PIC X(01) VALUE 'N'. 
+000000    03 CST-EOF-CRS2              PIC X(01) VALUE 'N'.  
 000000    03 CST-NON-TERM              PIC X(10) VALUE 'NON-TERM'.
 000000    03 CST-FIXED-03              PIC X(10) VALUE 'FIXED-03'.
 000000    03 CST-FIXED-06              PIC X(10) VALUE 'FIXED-06'.
@@ -82,12 +89,14 @@
 000000    03 CST-COUNT-UPD-BALANCE     PIC 9(05) VALUE 0.
 000000    03 CST-COUNT-UPD-STATUS      PIC 9(05) VALUE 0.  
 000000    03 CST-COUNT-FUNC002         PIC 9(05) VALUE 0.
+000000    03 CST-ACCID-FLAG            PIC S9(1) COMP VALUE 0.
 000000    03 CST-PARAM-1               PIC X(01) VALUE '1'.
 000000    03 CST-PARAM-2               PIC X(01) VALUE '2'.
 000000    03 CST-PARAM-3               PIC X(01) VALUE '3'.
 000000*--- DEBUG / ABEND 処理  
-000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.     
-000000    03 CST-DEBUG-MODE            PIC X(1)   VALUE 'Y'.
+000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.
+000000    03 CST-ABEND-DETAIL          PIC X(100) VALUE SPACES.  
+000000    03 CST-DEBUG-MODE            PIC X(1)   VALUE 'N'.
 000000*/-------------------------------------------------------------/*
 000000*  JCL パラメータ受け取りエリア                                                     
 000000*/-------------------------------------------------------------/* 
@@ -104,40 +113,11 @@
 000000* MAIN                   SECTION |      （MAIN）                           
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
-000000 MAIN.
-000000*    
-000000     IF CST-DEBUG-MODE = 'Y'
-000000         DISPLAY 'PARAMETER RECEIVED FROM JCL : ' 
-000000                                 LNK-PARAM-DATA
-000000     END-IF.
+000000 MAIN.   
 000000*
 000000     PERFORM                     INIT-VARIABLE.
-000000*    
+000000     PERFORM                     HANDLE-JCL-PARAM.
 000000     DISPLAY                     CST-START-PGM-MSG.
-000000     IF  LNK-PARAM-DATA NOT   =  CST-PARAM-1
-000000     AND LNK-PARAM-DATA NOT   =  CST-PARAM-2
-000000     AND LNK-PARAM-DATA NOT   =  CST-PARAM-3
-000000         DISPLAY 'INVALID PARAM FROM JCL : ' LNK-PARAM-DATA
-000000         STOP RUN
-000000     END-IF.
-000000*
-000000     EVALUATE LNK-PARAM-DATA
-000000         WHEN CST-PARAM-1
-000000             DISPLAY 'START FUN_001 : CALCULATE_INTEREST'
-000000             PERFORM             FUNCTION-001
-000000             DISPLAY CST-DONE-FNC001-MSG
-000000         WHEN CST-PARAM-2
-000000             DISPLAY 'START FUN_002 : SETTLEMENT'
-000000             PERFORM             FUNCTION-002
-000000             DISPLAY CST-DONE-FNC002-MSG
-000000         WHEN CST-PARAM-3
-000000             DISPLAY 'START FUN_001 : CALCULATE_INTEREST'
-000000             PERFORM             FUNCTION-001
-000000             DISPLAY CST-DONE-FNC001-MSG
-000000             DISPLAY 'START FUN_002 : SETTLEMENT'
-000000             PERFORM             FUNCTION-002
-000000             DISPLAY CST-DONE-FNC002-MSG
-000000     END-EVALUATE. 
 000000*--- デバッグモードが有効な場合のみ、詳細情報を表示する
 000000     IF CST-DEBUG-MODE = 'Y'
 000000         PERFORM                 DISPLAY-TOTAL
@@ -150,7 +130,8 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE          
 000000     ELSE
-000000         MOVE 'COMMIT'           TO      CST-ABEND-BREAKPOINT    
+000000         MOVE 'MAIN'             TO      CST-ABEND-BREAKPOINT
+000000         MOVE 'COMMIT FAILED'    TO      CST-ABEND-DETAIL    
 000000         PERFORM ABEND-PROGRAM
 000000     END-IF.
 000000*
@@ -169,13 +150,91 @@
 000000*
 000000     EXIT. 
 000000*/-------------------------------------------------------------/*         
+000000*                                | NOTE: JCLパラメータ処理                       
+000000* HANDLE-JCL-PARAM       SECTION |      （COMMON）                        
+000000*                                |                                       
+000000*/-------------------------------------------------------------/*
+000000 HANDLE-JCL-PARAM.
+000000*
+000000     UNSTRING LNK-PARAM-DATA     
+000000         DELIMITED BY ','        
+000000         INTO WS-PARAM-FUNC      
+000000              WS-PARAM-ACCID-CHAR
+000000     END-UNSTRING.
+000000*
+000000     PERFORM VALIDATE-JCL-PARAM.
+000000*
+000000     IF WS-PARAM-ACCID-CHAR = SPACES                      
+000000         MOVE 0                  TO      CST-ACCID-FLAG                          
+000000         MOVE 0                  TO      WS-PARAM-ACCID                         
+000000     ELSE                                                 
+000000         MOVE 1                  TO      CST-ACCID-FLAG                          
+000000         MOVE WS-PARAM-ACCID-CHAR
+000000                                 TO 
+000000              WS-PARAM-ACCID-DISP  
+000000         MOVE WS-PARAM-ACCID-DISP
+000000                                 TO 
+000000              WS-PARAM-ACCID       
+000000     END-IF.                                              
+000000*
+000000     EVALUATE WS-PARAM-FUNC
+000000         WHEN CST-PARAM-1
+000000             DISPLAY 'START FUN_001 : CALCULATE_INTEREST'
+000000             PERFORM             FUNCTION-001
+000000             DISPLAY CST-DONE-FNC001-MSG
+000000         WHEN CST-PARAM-2
+000000             DISPLAY 'START FUN_002 : SETTLEMENT'
+000000             PERFORM             FUNCTION-002
+000000             DISPLAY CST-DONE-FNC002-MSG
+000000         WHEN CST-PARAM-3
+000000             DISPLAY 'START FUN_001 : CALCULATE_INTEREST'
+000000             PERFORM             FUNCTION-001
+000000             DISPLAY CST-DONE-FNC001-MSG
+000000             DISPLAY 'START FUN_002 : SETTLEMENT'
+000000             PERFORM             FUNCTION-002
+000000             DISPLAY CST-DONE-FNC002-MSG
+000000     END-EVALUATE. 
+000000     EXIT.
+000000*/-------------------------------------------------------------/*         
+000000*                                | NOTE: 利息計算                         
+000000* VALIDATE-JCL-PARAM     SECTION |      （FUN_001)                        
+000000*                                |                                      
+000000*/-------------------------------------------------------------/*
+000000 VALIDATE-JCL-PARAM.
+000000*
+000000     IF CST-DEBUG-MODE = 'Y'
+000000         DISPLAY 'LNK-PARAM-DATA RECEIVED FROM JCL : ' 
+000000                 LNK-PARAM-DATA
+000000     END-IF.
+000000     IF WS-PARAM-FUNC = SPACES
+000000         MOVE CST-PARAM-3        TO      WS-PARAM-FUNC
+000000     END-IF.
+000000*
+000000     IF  WS-PARAM-FUNC NOT = CST-PARAM-1
+000000     AND WS-PARAM-FUNC NOT = CST-PARAM-2
+000000     AND WS-PARAM-FUNC NOT = CST-PARAM-3
+000000         DISPLAY 'FUNCTION PARAM IS INVALID : ' 
+000000                 WS-PARAM-FUNC
+000000         STOP RUN
+000000     END-IF.
+000000*           
+000000     IF WS-PARAM-ACCID-CHAR NOT = SPACES
+000000         IF WS-PARAM-ACCID-CHAR IS NOT NUMERIC
+000000             DISPLAY 'ACC_ID PARAM IS NOT NUMERIC : ' 
+000000                     WS-PARAM-ACCID-CHAR
+000000             STOP RUN
+000000         END-IF
+000000     END-IF.
+000000*         
+000000     EXIT.
+000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息計算                         
 000000* FUNCTION-001           SECTION |      （FUN_001)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
 000000 FUNCTION-001.                                                             
 000000*    
-000000     MOVE 'N'                    TO     CST-FLAG-1.
+000000     MOVE 'N'                    TO     CST-EOF-CRS1.
 000000* 
 000000     EXEC SQL                                             
 000000         DECLARE CRS1 CURSOR FOR                          
@@ -185,7 +244,9 @@
 000000                 START_DATE,                                            
 000000                 MONEY_ROOT                             
 000000         FROM    MYDB.DB_ACCOUNT_SAVINGS                     
-000000         WHERE   STATUS = :CST-STATUS-1                     
+000000         WHERE   STATUS = :CST-STATUS-1
+000000         AND     ( :WS-PARAM-ACCID = 0
+000000         OR      ACC_ID = :WS-PARAM-ACCID ) 
 000000     END-EXEC. 
 000000*--- OPEN CURSOR1                             
 000000     EXEC SQL                                                
@@ -195,17 +256,29 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT              
+000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT 
+000000         MOVE 'OPEN CSR 1 FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL             
 000000         PERFORM ABEND-PROGRAM                            
 000000     END-IF.                                                 
-000000     PERFORM UNTIL CST-FLAG-1 = 'Y'                            
+000000     PERFORM UNTIL CST-EOF-CRS1 = 'Y'                            
 000000         PERFORM FETCH-AND-CALCULATE                                  
 000000     END-PERFORM.                                            
 000000*--- CLOSE CURSOR1                                                        
 000000     EXEC SQL                                                
 000000         CLOSE CRS1                                          
 000000     END-EXEC.
-000000*---      
+000000*---  
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE  
+000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT
+000000         MOVE 'CLOSE CSR 1 FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL              
+000000         PERFORM ABEND-PROGRAM                            
+000000     END-IF.     
 000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 決済処理                         
@@ -214,7 +287,7 @@
 000000*/-------------------------------------------------------------/*         
 000000 FUNCTION-002.
 000000*                                                            
-000000     MOVE 'N'                    TO      CST-FLAG-2.
+000000     MOVE 'N'                    TO      CST-EOF-CRS2.
 000000*                               
 000000     EXEC SQL                                            
 000000         DECLARE CRS2 CURSOR FOR
@@ -225,7 +298,9 @@
 000000                 END_DATE,
 000000                 MONEY_ROOT
 000000         FROM    MYDB.DB_ACCOUNT_SAVINGS  
-000000         WHERE   STATUS = :CST-STATUS-1                     
+000000         WHERE   STATUS = :CST-STATUS-1
+000000         AND     ( :WS-PARAM-ACCID = 0
+000000         OR      ACC_ID = :WS-PARAM-ACCID )                 
 000000     END-EXEC.                                            
 000000*--- OPEN-CURSOR-2                                                
 000000     EXEC SQL                                             
@@ -236,10 +311,13 @@
 000000         CONTINUE
 000000     ELSE
 000000         MOVE 'FUNCTION-002'     TO      CST-ABEND-BREAKPOINT
+000000         MOVE 'OPEN CSR 2 FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL
 000000         PERFORM ABEND-PROGRAM                          
 000000     END-IF.                                              
 000000*                                                         
-000000     PERFORM UNTIL CST-FLAG-2 = 'Y'                         
+000000     PERFORM UNTIL CST-EOF-CRS2 = 'Y'                         
 000000         PERFORM FETCH-SAV-SETTLEMENT                               
 000000     END-PERFORM.                                         
 000000*--- CLOSE CURSOR2                                                    
@@ -247,6 +325,15 @@
 000000         CLOSE CRS2                                       
 000000     END-EXEC.                                            
 000000*---      
+000000     IF SQLCODE = 0
+000000         CONTINUE
+000000     ELSE  
+000000         MOVE 'FUNCTION-002'     TO     CST-ABEND-BREAKPOINT
+000000         MOVE 'CLOSE CSR 2 FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL              
+000000         PERFORM ABEND-PROGRAM                            
+000000     END-IF. 
 000000     EXIT. 
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データ取得・計算                 
@@ -266,7 +353,7 @@
 000000*                                                              
 000000     EVALUATE SQLCODE                                          
 000000         WHEN 100
-000000             MOVE 'Y'            TO            CST-FLAG-1             
+000000             MOVE 'Y'            TO            CST-EOF-CRS1             
 000000         WHEN 0                                           
 000000             PERFORM GET-CURR-DATE-FUN001
 000000             PERFORM EXEC-GET-INTEREST-RATE                             
@@ -279,7 +366,10 @@
 000000         WHEN OTHER                                              
 000000             MOVE 'FETCH-AND-CALCULATE' 
 000000                                 TO 
-000000                  CST-ABEND-BREAKPOINT        
+000000                  CST-ABEND-BREAKPOINT
+000000             MOVE 'FETCH CSR1 FAILED'     
+000000                                 TO     
+000000                  CST-ABEND-DETAIL        
 000000             PERFORM ABEND-PROGRAM                              
 000000     END-EVALUATE.
 000000*                                                         
@@ -298,19 +388,19 @@
 000000     MOVE HV-DATE-CURRENT-X(1:8)
 000000                                 TO 
 000000          HV-DATE-CURRENT-9.
-000000*--- 現在日付を日数に変換
+000000*--- CONVERT CURRENT DATE TO INTEGER DAYS
 000000     COMPUTE HV-DAYS-CURRENT-COMP =
 000000         FUNCTION INTEGER-OF-DATE(HV-DATE-CURRENT-9).
-000000*--- 開始日を数値化
+000000*--- CONVERT START DATE TO INTEGER
 000000     COMPUTE HV-DATE-START-9      =
 000000         FUNCTION NUMVAL(AS-START-DATE).
-000000*--- 開始日を日数に変換
 000000     COMPUTE HV-DAYS-START-COMP   =
 000000         FUNCTION INTEGER-OF-DATE(HV-DATE-START-9).
-000000*--- 実日数計算
+000000*--- CALCULATE ACTUAL DAYS FROM START DATE
 000000     COMPUTE WS-DAYS-ACTUAL       =
 000000             HV-DAYS-CURRENT-COMP - 
 000000             HV-DAYS-START-COMP.
+000000*--- PREVENT NEGATIVE DAYS
 000000     IF WS-DAYS-ACTUAL < 0
 000000         MOVE 0                  TO WS-DAYS-ACTUAL
 000000     END-IF.
@@ -370,8 +460,11 @@
 000000         CONTINUE
 000000     ELSE  
 000000         MOVE 'EXEC-GET-INTEREST-RATE' 
-000000                                TO 
-000000              CST-ABEND-BREAKPOINT       
+000000                                 TO 
+000000              CST-ABEND-BREAKPOINT
+000000         MOVE 'SELECT INTEREST_RATE INTO :WS-RATE-INTEREST FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL       
 000000         PERFORM ABEND-PROGRAM                               
 000000     END-IF.
 000000*                                                        
@@ -395,7 +488,10 @@
 000000     ELSE  
 000000         MOVE 'EXEC-GET-NONTERM-RATE' 
 000000                                 TO 
-000000              CST-ABEND-BREAKPOINT                                       
+000000              CST-ABEND-BREAKPOINT
+000000         MOVE 'SELECT INTEREST_RATE INTO :WS-RATE-NON-TERM FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL                                        
 000000         PERFORM ABEND-PROGRAM                              
 000000     END-IF.
 000000*                                                          
@@ -465,14 +561,16 @@
 000000             COMPUTE WS-AMOUNT-INTEREST =                      
 000000                     AS-MONEY-ROOT      * 
 000000                     WS-RATE-INTEREST   * 
-000000                     WS-DAYS-TERM       / CST-FIXED-VALUE-12
+000000                     WS-DAYS-TERM       / 
+000000                     CST-FIXED-VALUE-12
 000000         ELSE       
 000000             PERFORM EXEC-GET-NONTERM-RATE
 000000*--- INTEREST = MONEY_ROOT * NONTERM_RATE * ACTUAL_DAYS / 365           
 000000             COMPUTE WS-AMOUNT-INTEREST =                      
 000000                     AS-MONEY-ROOT      * 
 000000                     WS-RATE-NONTERM    * 
-000000                     WS-DAYS-ACTUAL     / CST-FIXED-VALUE-12        
+000000                     WS-DAYS-ACTUAL     / 
+000000                     CST-FIXED-VALUE-12        
 000000         END-IF                                             
 000000     END-IF.
 000000*--- MONEY = MONEY_ROOT + INTEREST                                      
@@ -500,7 +598,7 @@
 000000*                                          
 000000     EVALUATE SQLCODE                                     
 000000         WHEN 100                                           
-000000             MOVE 'Y'            TO      CST-FLAG-2                      
+000000             MOVE 'Y'            TO      CST-EOF-CRS2                      
 000000         WHEN 0
 000000             PERFORM GET-CURR-DATE-FUN002
 000000             PERFORM EXEC-GET-INTEREST-RATE
@@ -518,7 +616,10 @@
 000000         WHEN OTHER                                          
 000000             MOVE 'FETCH-SAV-SETTLEMENT' 
 000000                                 TO 
-000000                  CST-ABEND-BREAKPOINT     
+000000                  CST-ABEND-BREAKPOINT
+000000             MOVE 'FETCH CSR2 FAILED'     
+000000                                 TO     
+000000                  CST-ABEND-DETAIL     
 000000             PERFORM ABEND-PROGRAM                        
 000000     END-EVALUATE.
 000000*                                                  
@@ -532,7 +633,7 @@
 000000*                                  
 000000     EXEC SQL                                             
 000000         UPDATE  MYDB.DB_ACCOUNT_BALANCE                   
-000000         SET     BALANCE = BALANCE + :WS-AMOUNT-TOTAL              
+000000         SET     BALANCE = BALANCE + :WS-AMOUNT-TOTAL             
 000000         WHERE   ACC_ID  = :AB-ACC-ID                        
 000000     END-EXEC.
 000000*                                              
@@ -541,7 +642,10 @@
 000000     ELSE
 000000         MOVE 'UPDATE-ACCOUNT-BALANCE' 
 000000                                 TO 
-000000              CST-ABEND-BREAKPOINT         
+000000              CST-ABEND-BREAKPOINT 
+000000         MOVE 'UPDATE ACCOUNT BALANCE FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL         
 000000         PERFORM ABEND-PROGRAM                                  
 000000     END-IF. 
 000000*                                                        
@@ -560,11 +664,14 @@
 000000     END-EXEC.                                                     
 000000*                
 000000     IF SQLCODE = 0
-000000        CONTINUE
+000000         CONTINUE
 000000     ELSE  
-000000        MOVE 'UPDATE-SAVING-STATUS' 
+000000         MOVE 'UPDATE-SAVING-STATUS' 
 000000                                 TO 
-000000             CST-ABEND-BREAKPOINT           
+000000              CST-ABEND-BREAKPOINT
+000000         MOVE 'UPDATE SAVING STATUS FAILED'     
+000000                                 TO     
+000000              CST-ABEND-DETAIL           
 000000         PERFORM ABEND-PROGRAM                                   
 000000     END-IF.
 000000*                                                         
@@ -632,9 +739,9 @@
 000000*                                                  
 000000     DISPLAY 'ABEND-PROGRAM'.
 000000     DISPLAY 'ERROR MODULE : ' CST-ABEND-BREAKPOINT.
+000000     DISPLAY 'ERROR DETAIL : ' CST-ABEND-DETAIL.
 000000     DISPLAY 'SQLCODE      : ' SQLCODE.
 000000     DISPLAY 'SQLSTATE     : ' SQLSTATE.
-000000     DISPLAY 'SQLERRMC     : ' SQLERRMC.
 000000*--- ROLLBACK
 000000     EXEC SQL
 000000         ROLLBACK
