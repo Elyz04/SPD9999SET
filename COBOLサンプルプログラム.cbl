@@ -52,7 +52,7 @@
 000000    03 WS-AMOUNT-INTEREST        PIC S9(13)V99    COMP-3.         
 000000    03 WS-AMOUNT-TOTAL           PIC S9(13)V99    COMP-3.  
 000000    03 WS-RATE-INTEREST          PIC S9(01)V9(04) COMP-3.        
-000000    03 WS-RATE-NONTERM           PIC S9(01)V9(04) COMP-3.                    
+000000    03 WS-RATE-NONTERM           PIC S9(01)V9(04) COMP-3.            
 000000    03 WS-PARAM-FUNC             PIC X(01).             
 000000    03 WS-PARAM-ACCID-CHAR       PIC X(09).   
 000000    03 WS-PARAM-ACCID-DISP       PIC 9(09). 
@@ -67,11 +67,11 @@
 000000    03 HV-DAYS-START-COMP        PIC S9(09) COMP.               
 000000    03 HV-DAYS-END-COMP          PIC S9(09) COMP.                 
 000000    03 HV-DATE-START-9           PIC 9(08).                    
-000000    03 HV-DATE-END-9             PIC 9(08).                                        
+000000    03 HV-DATE-END-9             PIC 9(08).                             
 000000    03 HV-DATE-CURRENT-9         PIC 9(08). 
 000000    03 HV-ACC-STATUS             PIC X(01).
 000000    03 HV-ACTIVE-SAVING-CNT      PIC S9(09) COMP.
-000000    03 HV-TOTAL-SAVING-CNT       PIC S9(09) COMP.                           
+000000    03 HV-TOTAL-SAVING-CNT       PIC S9(09) COMP.                  
 000000*/-------------------------------------------------------------/*
 000000*  定数定義                                                      
 000000*/-------------------------------------------------------------/*     
@@ -151,7 +151,7 @@
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
 000000 HANDLE-JCL-PARAM.
-000000*--- (X,YYYYYYYY,ZZZZZZZZ)
+000000*--- (X,YYYYYYYYY,ZZZZZZZZ)
 000000     UNSTRING LNK-PARAM-DATA     
 000000         DELIMITED BY ','        
 000000         INTO WS-PARAM-FUNC      
@@ -164,7 +164,7 @@
 000000         DISPLAY 'ACCOUNT ID PARAM IS REQUIRED'
 000000         STOP RUN                        
 000000     ELSE                                                 
-000000         MOVE 'Y'                TO      CST-ACCID-FLAG                          
+000000         MOVE 'Y'                TO      CST-ACCID-FLAG               
 000000         MOVE WS-PARAM-ACCID-CHAR
 000000                                 TO 
 000000              WS-PARAM-ACCID-DISP  
@@ -209,7 +209,7 @@
 000000*---
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 呼び出し処理モジュール                         
+000000*                                | NOTE: 呼び出し処理モジュール                    
 000000* VALIDATE-JCL-PARAM     SECTION |      （COMMON)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
@@ -240,7 +240,7 @@
 000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: ACC_ID 値を確認してください                         
+000000*                                | NOTE: ACC_ID 値を確認してください               
 000000* VALIDATE-ACCID-PARAM   SECTION |      （COMMON)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
@@ -255,7 +255,7 @@
 000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 受信した日付値を確認する                         
+000000*                                | NOTE: 受信した日付値を確認する                  
 000000* VALIDATE-DATE-PARAM    SECTION |      （COMMON)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
@@ -282,7 +282,7 @@
 000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: ACC_IDを確認してください                       
+000000*                                | NOTE: ACC_IDを確認してください                  
 000000* CHECK-ACCID-STATUS     SECTION |      （COMMON）                        
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
@@ -338,7 +338,7 @@
 000000* FUNCTION-001           SECTION |      （FUN_001)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
-000000 FUNCTION-001.                                                             
+000000 FUNCTION-001.                                                          
 000000*    
 000000     MOVE 'N'                    TO     CST-EOF-CRS1.
 000000* 
@@ -691,7 +691,7 @@
 000000*                                          
 000000     EVALUATE SQLCODE                                     
 000000         WHEN 100                                           
-000000             MOVE 'Y'            TO      CST-EOF-CRS2                      
+000000             MOVE 'Y'            TO      CST-EOF-CRS2                     
 000000         WHEN 0
 000000             PERFORM GET-CURR-DATE-FUN002
 000000             PERFORM EXEC-GET-INTEREST-RATE
