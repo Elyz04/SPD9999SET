@@ -7,17 +7,18 @@
 //* UPDATE :
 //*   2026/01/21 : SRCフォーマットに統一
 //*------------------------------------------------------------*
-//MAIN     JOB (ACCT#),'MAIN',NOTIFY=&SYSUID,TIME=(0,20)
+//MAIN     JOB NOTIFY=&SYSUID,TIME=(0,20)
 //*------------------------------------------------------------*
 //* 変数定義
 //*------------------------------------------------------------*
-// SET PGM=PGM001
-// SET LOAD=XXX.XXX.LOAD
-// SET DBRMLIB=XXX.XXX.DBRMLIB
-// SET SRCLIB=XXX.XXX.CBL
-// SET CPYLIB=XXX.XXX.DCLGEN
-// SET MEMB=MAIN
-// SET WSPC=800
+// SET LOAD=XXX.XXX.LOAD            
+// SET DBRMLIB=XXX.XXX.DBRMLIB      
+// SET SRCLIB=XXX.XXX.CBL           
+// SET CPYLIB=XXX.XXX.DCLGEN        
+// SET PGM=PGM001                   
+// SET MEMB=MAIN                    
+// SET WSPC=800                     
+// SET INPUT=XXX.XXX.READ           
 //*------------------------------------------------------------*
 //* PRE-COMPILE（DB2プリコンパイル）
 //* 内容：COBOLソース内のEXEC SQL文をプリコンパイルし、
@@ -44,7 +45,7 @@
 //              PARM='NODYNAM,LIB,OBJECT,RES,APOST,MAP,XREF,NOSEQUENCE'
 //STEPLIB  DD   DISP=SHR,DSN=IGY410.SIGYCOMP
 //SYSIN    DD   DISP=SHR,DSN=&SRCLIB(&MEMB)
-//         DD   DISP=(OLD,DELETE),DSN=&&PRECOM
+//         DD   DISP=(OLD,DELETE),DSN=&&PRECOM  
 //SYSLIB   DD   DISP=SHR,DSN=&CPYLIB
 //SYSLMOD  DD   DISP=SHR,DSN=&LOAD
 //SYSLIN   DD   DISP=(MOD,PASS),DSN=&&PLKSET,
@@ -67,10 +68,9 @@
 //         DD   DISP=SHR,DSN=DSN910.SDSNLOAD
 //         DD   DISP=SHR,DSN=ISP.SISPLOAD
 //         DD   DISP=SHR,DSN=GDDM.SADMMOD
-//SYSLIN   DD   DISP=(OLD,DELETE),DSN=&&PLKSET
+//SYSLIN   DD   DSN=&&PLKSET,DISP=(OLD,DELETE)
 //SYSLMOD  DD   DISP=(MOD,KEEP),DSN=&LOAD(&MEMB),
-//              SPACE=(32000,(30,30)),
-//              DCB=(RECFM=U,LRECL=80,BLKSIZE=3200)
+//              SPACE=(32000,(30,30)),DCB=(RECFM=U,LRECL=80,BLKSIZE=3200) 
 //SYSUT1   DD   SPACE=(1024,(50,50)),UNIT=SYSDA,
 //              DCB=(RECFM=FB,LRECL=80,BLKSIZE=3200)
 //SYSPRINT DD   SYSOUT=*
@@ -87,14 +87,14 @@
 //SYSOUT   DD   SYSOUT=*
 //SYSDUMP  DD   SYSOUT=*
 //SYSTSIN  DD   *
-  DSN SYSTEM(DB9G)
-    BIND PLAN(DF02)
-         MEMBER(PGM001)
-         QUALIFIER(DF)
-         ENCODING(EBCDIC)
-         ISOLATION(CS)
-         ACTION(REPLACE)
-  END
+DSN SYSTEM(DB9G)-
+  BIND PLAN(DF02)- 
+  MEMBER(PGM001)- 
+  ACTION(REPLACE)- 
+  QUALIFIER(DF)-
+  ENCODING(EBCDIC)- 
+  ISOLATION(CS)
+END
 /*
 //*------------------------------------------------------------*
 //* RUN（プログラム実行）
@@ -105,14 +105,17 @@
 //STEPLIB  DD   DISP=SHR,DSN=DSN910.DB9G.SDSNEXIT
 //         DD   DISP=SHR,DSN=DSN910.SDSNLOAD
 //         DD   DISP=SHR,DSN=&LOAD
+//INPUT    DD   DISP=SHR,                        
+//              DSN=&INPUT,                      
+//              DCB=(RECFM=FB,LRECL=80,BLKSIZE=0)
 //SYSPRINT DD   SYSOUT=*
 //SYSTSPRT DD   SYSOUT=*
 //SYSUDUMP DD   SYSOUT=*
 //SYSOUT   DD   SYSOUT=*
 //SYSTSIN  DD   *
-  DSN SYSTEM(DB9G)
-    RUN PROGRAM(MAIN)
-        PLAN(DF02)
-  END
+DSN SYSTEM(DB9G)
+  RUN PROGRAM(MAIN)- 
+  PLAN(DF02)
+END
 /*
 //**************************************************************
