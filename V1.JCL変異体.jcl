@@ -7,31 +7,37 @@
 //*        2026/01/19 : COBOL ソースに値を渡す      
 //*-------------------------------------------------------------*
 //PGM001   JOB (ACCT#),'PGM001',CLASS=A,MSGCLASS=X,                     
-//              NOTIFY=&SYSUID                                               
-// SET MEMB=PGM001                                                       
-// SET LOAD=XXX.XXX.LOAD                                                
-// SET DBRMLIB=XXX.XXX.DBRMLIB                                          
-// SET SRCLIB=XXX.XXX.CBL                                              
+//         NOTIFY=&SYSUID                                               
+//*SET LNGPRFX='IGY410'                                                 
+//*SET SYSLBLK=3200.LOAD                                                
+//*SET LIBPRFX='CEE'RC.DBRMLIB                                          
+//*SET GOPGM=GOPT.SRC.CBL                                               
+// SET MEMB=PGM001                                                      
+// SET LOAD=FPT.SRC.LOAD                                                
+// SET DBRMLIB=FPT.SRC.DBRMLIB                                         
+// SET SRCLIB=FPT.SRC.CBL                                               
 // SET WSPC=500                                                         
-// SET INCLUDE=XXX.XXX.DCLGEN                     
+// SET INCLUDE=FPT.SRC.DCLGEN                    
 //*------------------------------------------------------------*
 //* PRE-COMPILE（DB2プリコンパイル）                                    
 //* 内容：COBOLソース内のEXEC SQL文をプリコンパイルし、DBRMを生成         
 //* 備考：DB2バインド用のPLAN作成に必要                                  
 //*------------------------------------------------------------*
 //PC       EXEC PGM=DSNHPC,PARM='HOST(IBMCOB)'                          
-//DBRMLIB  DD   DISP=SHR,DSN=&DBRMLIB(&MEMB)                        
-//STEPLIB  DD   DISP=SHR,DSN=DSN910.DB9G.SDSNEXIT                        
-//         DD   DISP=SHR,DSN=DSN910.SDSNLOAD                             
-//SYSCIN   DD   DSN=&&DSNHOUT,DISP=(MOD,PASS),UNIT=SYSDA,                
-//              SPACE=(800,(&WSPC,&WSPC))                                
-//SYSIN    DD   DISP=SHR,DSN=&SRCLIB(&MEMB)                              
-//SYSLIB   DD   DISP=SHR,DSN=&INCLUDE                                    
-//SYSPRINT DD   SYSOUT=*                                                 
-//SYSTERM  DD   SYSOUT=*                                                 
-//SYSUDUMP DD   SYSOUT=*                                                 
-//SYSUT1   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
-//SYSUT2   DD   SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA   
+//DBRMLIB  DD  DISP=SHR,                                                
+//             DSN=&DBRMLIB(&MEMB)                                      
+//STEPLIB  DD  DISP=SHR,DSN=DSN910.DB9G.SDSNEXIT                        
+//         DD  DISP=SHR,DSN=DSN910.SDSNLOAD                             
+//SYSCIN   DD  DSN=&&DSNHOUT,DISP=(MOD,PASS),UNIT=SYSDA,                
+//             SPACE=(800,(&WSPC,&WSPC))                                
+//SYSIN    DD  DISP=SHR,DSN=&SRCLIB(&MEMB)                              
+//*SYSLIB  DD  DISP=SHR,DSN=DSN810.SRCLIB.DATA                          
+//SYSLIB   DD  DISP=SHR,DSN=&INCLUDE                                    
+//SYSPRINT DD  SYSOUT=*                                                 
+//SYSTERM  DD  SYSOUT=*                                                 
+//SYSUDUMP DD  SYSOUT=*                                                 
+//SYSUT1   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA             
+//SYSUT2   DD  SPACE=(800,(&WSPC,&WSPC),,,ROUND),UNIT=SYSDA   
 //*------------------------------------------------------------*
 //* COMPILE（COBOLコンパイル）                                                        
 //* 内容：プリコンパイル済みCOBOLソースをコンパイルし、                  
@@ -105,12 +111,12 @@
 //SYSTSIN  DD   *                                                       
   DSN SYSTEM(DB9G)                                                      
   BIND PLAN(DF01)-                                                      
-  MEMBER(PGM001)-                      
+  MEMBER(PGM001)-                                                       
   QUALIFIER(DF)-                                                        
   ENCODING(EBCDIC)-                                                     
   ACTION(REPLACE)                                                       
   END                                                                   
-/*                  
+/*                   
 //*------------------------------------------------------------*                                             
 //* RUN（プログラム実行）                                               
 //* 内容：作成したロードモジュールをPLAN指定で実行                        

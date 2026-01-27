@@ -568,8 +568,7 @@
 000000     END-IF.
 000000     COMPUTE WS-AMOUNT-TOTAL            =                               
 000000             AS-MONEY-ROOT              + 
-000000             WS-AMOUNT-INTEREST.
-000000*             
+000000             WS-AMOUNT-INTEREST.            
 000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データ取得・決済計算              
@@ -680,7 +679,6 @@
 000000* DISPLAY-DETAIL-FUN001  SECTION |      （FUN_001)                    
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*  
-000000*
 000000 DISPLAY-DETAIL-FUN001.
 000000     DISPLAY '*/--------------------------------------/*'.
 000000     DISPLAY 'OUTPUT FUNCTION-001 : INTEREST CALCULATION'.
@@ -706,7 +704,6 @@
 000000* DISPLAY-DETAIL-FUN002  SECTION |      （FUN_002)                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*  
-000000*
 000000 DISPLAY-DETAIL-FUN002.
 000000     DISPLAY '*/----------------------------/*'.
 000000     DISPLAY 'OUTPUT FUNCTION-002 : SETTLEMENT'.
