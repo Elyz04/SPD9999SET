@@ -1,12 +1,13 @@
 000000*****************************************************************
 000000 IDENTIFICATION                  DIVISION.   
-000000 PROGRAM-ID.                     MAIN.
+000000 PROGRAM-ID.                     SPD9999DRV.
 000000*/-------------------------------------------------------------/*     
-000000*    PROGRAM-ID     :            MAIN                               
-000000*    CREATE DATE    :            2026/01/21                              
+000000*    PROGRAM-ID     :            SPD9999DRV                               
+000000*    CREATE DATE    :            2026/01/21
+000000*    UPDATE DATE    :            XXXX/XX/XX                              
 000000*    AUTHOR         :            Elyz                      
-000000*    PURPOSE        :            PGM001 に送信された一連の PARM 
-000000*                                の送信と実行
+000000*    PURPOSE        :            SPD9999SET に送信された一連の 
+000000*                                PARM の送信と実行
 000000*/-------------------------------------------------------------/*   
 000000*    UPDATE         :                                           
 000000*        2026/01/21 :            プログラムの作成
@@ -41,8 +42,8 @@
 000000 01 CST-VARIABLES.
 000000    03 CST-EOF                   PIC X      VALUE 'N'.
 000000    03 CST-REC-COUNT             PIC 9(03)  VALUE 0.
-000000    03 CST-START-PGM-MSG         PIC X(10)  VALUE 'START MAIN'.
-000000    03 CST-STOP-PGM-MSG          PIC X(09)  VALUE 'STOP MAIN'.
+000000    03 CST-START-PGM-MSG         PIC X(10)  VALUE 'START SPD9DRV'.
+000000    03 CST-STOP-PGM-MSG          PIC X(09)  VALUE 'STOP SPD9DRV'.
 000000*/-------------------------------------------------------------/*
 000000*  JCL パラメータ受け取りエリア                                                     
 000000*/-------------------------------------------------------------/* 
@@ -55,7 +56,7 @@
 000000 PROCEDURE                       DIVISION.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: メイン処理                       
-000000* MAIN                   SECTION |      （MAIN）                           
+000000* SPD9999DRV             SECTION |      （MAIN）                           
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
 000000*
@@ -76,7 +77,7 @@
 000000                 MOVE INPUT-REC  TO          LNK-PARAM-DATA
 000000                 DISPLAY 'RECORD #'          CST-REC-COUNT
 000000                 DISPLAY 'LNK-PARAM-DATA : ' LNK-PARAM-DATA
-000000                 CALL    'PGM001' USING      LNK-PARAM-JCL
+000000                 CALL    'SPD9999SET' USING  LNK-PARAM-JCL
 000000         END-READ
 000000     END-PERFORM
 000000*
@@ -91,7 +92,7 @@
 000000*
 000000     STOP RUN.
 000000*/-------------------------------------------------------------/* 
-000000 END PROGRAM MAIN.
+000000 END PROGRAM SPD9999DRV.
 000000*===============================================================*         
 000000*====           ＥＮＤ　 　ＯＦ　 　ＰＲＯＣＥＤＵＲＥ　       ====*         
 000000*===============================================================*

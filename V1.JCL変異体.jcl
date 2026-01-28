@@ -6,13 +6,13 @@
 //*    UPDATE         :                                           
 //*        2026/01/19 : COBOL ソースに値を渡す      
 //*-------------------------------------------------------------*
-//PGM001   JOB (ACCT#),'PGM001',CLASS=A,MSGCLASS=X,                     
+//SPD9999SET   JOB (ACCT#),'SPD9999SET',CLASS=A,MSGCLASS=X,                     
 //         NOTIFY=&SYSUID                                               
 //*SET LNGPRFX='IGY410'                                                 
 //*SET SYSLBLK=3200.LOAD                                                
 //*SET LIBPRFX='CEE'RC.DBRMLIB                                          
 //*SET GOPGM=GOPT.SRC.CBL                                               
-// SET MEMB=PGM001                                                      
+// SET MEMB=SPD9999SET                                                      
 // SET LOAD=FPT.SRC.LOAD                                                
 // SET DBRMLIB=FPT.SRC.DBRMLIB                                         
 // SET SRCLIB=FPT.SRC.CBL                                               
@@ -111,7 +111,7 @@
 //SYSTSIN  DD   *                                                       
   DSN SYSTEM(DB9G)                                                      
   BIND PLAN(DF01)-                                                      
-  MEMBER(PGM001)-                                                       
+  MEMBER(SPD9999SET)-                                                       
   QUALIFIER(DF)-                                                        
   ENCODING(EBCDIC)-                                                     
   ACTION(REPLACE)                                                       
@@ -136,7 +136,7 @@
 //SYSOUT   DD   SYSOUT=*                                                
 //SYSTSIN  DD   *                                                       
   DSN SYSTEM (DB9G)                                                     
-  RUN PROGRAM(PGM001)-
+  RUN PROGRAM(SPD9999SET)-
   PARM('3,000004002')-                                                   
   PLAN(DF01)-                        
   LIBRARY ('XXX.XXX.LOAD')

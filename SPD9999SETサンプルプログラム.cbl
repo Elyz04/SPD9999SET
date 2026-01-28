@@ -1,9 +1,10 @@
 000000*****************************************************************
 000000 IDENTIFICATION                  DIVISION.                            
-000000 PROGRAM-ID.                     PGM001.  
+000000 PROGRAM-ID.                     SPD9999SET.  
 000000*/-------------------------------------------------------------/*     
-000000*    PROGRAM-ID     :            PGM001                               
-000000*    CREATE DATE    :            2026/01/07                              
+000000*    PROGRAM-ID     :            SPD9999SET                               
+000000*    CREATE DATE    :            2026/01/07 
+000000*    UPDATE DATE    :            2026/01/28                             
 000000*    AUTHOR         :            Elyz                      
 000000*    PURPOSE        :            利息計算および満期決済処理
 000000*/-------------------------------------------------------------/*   
@@ -76,12 +77,12 @@
 000000*  定数定義                                                      
 000000*/-------------------------------------------------------------/*     
 000000 01 CST-VARIABLES.
-000000    03 CST-START-PGM-MSG         PIC X(12)  VALUE 'START PGM001'.
-000000    03 CST-STOP-PGM-MSG          PIC X(11)  VALUE 'STOP PGM001'.
-000000    03 CST-START-FNC001-MSG      PIC X(13)  VALUE 'START FUN001'.
-000000    03 CST-START-FNC002-MSG      PIC X(13)  VALUE 'START FUN002'.
-000000    03 CST-END-FNC001-MSG        PIC X(13)  VALUE 'DONE FUN001'.
-000000    03 CST-END-FNC002-MSG        PIC X(13)  VALUE 'DONE FUN002'.
+000000    03 CST-START-PGM-MSG         PIC X(12)  VALUE 'START SPD9SET'.
+000000    03 CST-STOP-PGM-MSG          PIC X(11)  VALUE 'STOP SPD9SET'.
+000000    03 CST-START-FNC001-MSG      PIC X(13)  VALUE 'START PREVIEW'.
+000000    03 CST-START-FNC002-MSG      PIC X(13)  VALUE 'START SETTLE'.
+000000    03 CST-END-FNC001-MSG        PIC X(13)  VALUE 'DONE PREVIEW'.
+000000    03 CST-END-FNC002-MSG        PIC X(13)  VALUE 'DONE SETTLE'.
 000000    03 CST-STATUS-1              PIC X(01)  VALUE '1'.          
 000000    03 CST-STATUS-9              PIC X(01)  VALUE '9'.          
 000000    03 CST-EOF-CRS1              PIC X(01)  VALUE 'N'. 
@@ -101,6 +102,8 @@
 000000    03 CST-PARAM-1               PIC X(01)  VALUE '1'.
 000000    03 CST-PARAM-2               PIC X(01)  VALUE '2'.
 000000    03 CST-PARAM-3               PIC X(01)  VALUE '3'.
+000000    03 CST-COMMIT-CNT            PIC 9(05)  VALUE 0.
+000000    03 CST-COMMIT-LIMIT          PIC 9(05)  VALUE 100.
 000000*--- DEBUG / ABEND  
 000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.
 000000    03 CST-ABEND-DETAIL          PIC X(100) VALUE SPACES.  
@@ -118,35 +121,34 @@
 000000 PROCEDURE                       DIVISION USING LNK-PARAM-JCL.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: メイン処理                       
-000000* MAIN                   SECTION |      （MAIN）                           
+000000* SPD9999-MAIN           SECTION |      （SPD9999-MAIN）                  
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
-000000 MAIN.   
-000000     PERFORM                     INIT-VARIABLE.
-000000     PERFORM                     INIT-CURRENT-DATE.
-000000     PERFORM                     HANDLE-INPUT-PARAM.
+000000 SPD9999-MAIN.   
+000000     PERFORM                     SPD9999-INIT-VAR.
+000000     PERFORM                     SPD9999-INIT-DATE.
+000000     PERFORM                     SPD9999-HANDLE-PARAM.
 000000     DISPLAY                     CST-START-PGM-MSG.
 000000     IF CST-DEBUG-MODE = 'Y'
-000000         PERFORM                 DISPLAY-TOTAL
+000000         PERFORM                 SPD9999-DISP-TOTAL
 000000     END-IF.
-000000     PERFORM                     COMMIT-DATA.
 000000     DISPLAY                     CST-STOP-PGM-MSG.
 000000     STOP RUN.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 変数初期化                       
-000000* INITIALIZE             SECTION |      （COMMON）                        
+000000* SPD9999-INIT-VAR       SECTION |      （COMMON）                        
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*         
-000000 INIT-VARIABLE.
+000000 SPD9999-INIT-VAR.
 000000     INITIALIZE                  WS-VARIABLES.                           
 000000     INITIALIZE                  HV-VARIABLES.                          
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 計算用ワーク初期化（FETCH単位）                      
-000000* INITIALIZE             SECTION |      （COMMON）                        
+000000*                                | NOTE: 計算用ワーク初期化             
+000000* SPD9999-INIT-CALC      SECTION |      （COMMON）                        
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*         
-000000 INIT-CALC-VAR.
+000000 SPD9999-INIT-CALC.
 000000     MOVE 0                      TO      WS-DAYS-ACTUAL
 000000                                         WS-DAYS-TERM
 000000                                         WS-AMOUNT-INTEREST
@@ -155,11 +157,11 @@
 000000                                         WS-RATE-NONTERM.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 計算用ワーク初期化（FETCH単位）                      
-000000* INIT-CURRENT-DATE      SECTION |      （COMMON）                        
+000000*                                | NOTE: 計算用ワーク初期化         
+000000* SPD9999-INIT-DATE      SECTION |      （COMMON）                        
 000000*                                |                                       
-000000*/-------------------------------------------------------------/*          
-000000 INIT-CURRENT-DATE.
+000000*/-------------------------------------------------------------/*         
+000000 SPD9999-INIT-DATE.
 000000     MOVE FUNCTION CURRENT-DATE(1:8)
 000000                                 TO 
 000000                   HV-DATE-CURRENT-9.
@@ -168,10 +170,10 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: JCLパラメータ処理                       
-000000* HANDLE-INPUT-PARAM     SECTION |      （COMMON）                        
+000000* SPD9999-HANDLE-PARAM   SECTION |      （COMMON）                        
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*
-000000 HANDLE-INPUT-PARAM.
+000000 SPD9999-HANDLE-PARAM.
 000000     IF LNK-PARAM-LENGHT = 0
 000000     OR LNK-PARAM-LENGHT > 11
 000000         DISPLAY 'INVALID JCL PARAM LENGTH'
@@ -199,43 +201,44 @@
 000000                                 TO 
 000000              WS-PARAM-ACCID       
 000000     END-IF.                                              
-000000     PERFORM VALIDATE-INPUT-PARAM.
+000000     PERFORM SPD9999-VALIDATE-PARAM.
 000000     IF CST-ACCID-FLAG = 'Y'
-000000         PERFORM CHECK-ACCID-STATUS
-000000     END-IF. 
+000000         PERFORM SPD9999-CHK-ACC-EXIST
+000000         PERFORM SPD9999-CHK-ACC-ACTIVE
+000000     END-IF.
 000000     EVALUATE WS-PARAM-FUNC
 000000         WHEN CST-PARAM-1
 000000             DISPLAY CST-START-FNC001-MSG
-000000             PERFORM FUNCTION-001
+000000             PERFORM SPD9999-PREVIEW
 000000             DISPLAY CST-END-FNC001-MSG
 000000         WHEN CST-PARAM-2
 000000             DISPLAY CST-START-FNC002-MSG
-000000             PERFORM FUNCTION-002
+000000             PERFORM SPD9999-SETTLE
 000000             DISPLAY CST-END-FNC002-MSG
 000000         WHEN CST-PARAM-3
 000000             DISPLAY CST-START-FNC001-MSG
-000000             PERFORM FUNCTION-001
+000000             PERFORM SPD9999-PREVIEW
 000000             DISPLAY CST-END-FNC001-MSG
 000000             DISPLAY CST-START-FNC002-MSG
-000000             PERFORM FUNCTION-002
+000000             PERFORM SPD9999-SETTLE
 000000             DISPLAY CST-END-FNC002-MSG
 000000     END-EVALUATE. 
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 呼び出し処理モジュール                    
-000000* VALIDATE-INPUT-PARAM   SECTION |      （COMMON)                        
+000000* SPD9999-VALIDATE-PARAM SECTION |      （COMMON)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
-000000 VALIDATE-INPUT-PARAM.
-000000     PERFORM VALIDATE-FUNC-PARAM
-000000     PERFORM VALIDATE-ACCID-PARAM
+000000 SPD9999-VALIDATE-PARAM.
+000000     PERFORM SPD9999-CHK-FUNC
+000000     PERFORM SPD9999-CHK-ACCID
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: チェック機能値                         
-000000* VALIDATE-FUNC-PARAM    SECTION |      （COMMON)                        
+000000* SPD9999-CHK-FUNC       SECTION |      （COMMON)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
-000000 VALIDATE-FUNC-PARAM.
+000000 SPD9999-CHK-FUNC.
 000000     IF WS-PARAM-FUNC = SPACES
 000000         DISPLAY 'FUNCTION PARAM IS REQUIRED' 
 000000         STOP RUN
@@ -250,22 +253,22 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: ACC_ID 値を確認してください               
-000000* VALIDATE-ACCID-PARAM   SECTION |      （COMMON)                        
+000000* SPD9999-CHK-ACCID      SECTION |      （COMMON)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
-000000 VALIDATE-ACCID-PARAM.
+000000 SPD9999-CHK-ACCID.
 000000     IF WS-PARAM-ACCID-CHAR(1:9) IS NOT NUMERIC  
 000000         DISPLAY 'ACCOUNT ID PARAM IS NOT NUMERIC : '  
 000000                 WS-PARAM-ACCID-CHAR             
 000000         STOP RUN                                  
 000000     END-IF.                                       
 000000     EXIT.
-000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: ACC_IDを確認してください                  
-000000* CHECK-ACCID-STATUS     SECTION |      （COMMON）                        
-000000*                                |                                       
 000000*/-------------------------------------------------------------/*
-000000 CHECK-ACCID-STATUS.
+000000*                                | NOTE: ACC_ID チェック
+000000* SPD9999-CHK-ACC-EXIST  SECTION |      （COMMON）
+000000*                                |       DB_ACCOUNT_SAVINGS
+000000*/-------------------------------------------------------------/*
+000000 SPD9999-CHK-ACC-EXIST.
 000000     EXEC SQL
 000000         SELECT COUNT(*)
 000000         INTO   :HV-TOTAL-SAVING-CNT
@@ -273,22 +276,27 @@
 000000         WHERE  ACC_ID = :WS-PARAM-ACCID
 000000     END-EXEC.
 000000     IF SQLCODE NOT = 0
-000000         MOVE 'CHECK-ACCID-STATUS'
+000000         MOVE 'SPD9999-CHK-ACC-EXIST'
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'SELECT ACC_ID EXIST FAILED'
 000000                                 TO 
 000000              CST-ABEND-DETAIL
-000000         PERFORM ABEND-PROGRAM
-000000     ELSE
-000000         DISPLAY 'HV-TOTAL-SAVING-CNT' HV-TOTAL-SAVING-CNT
+000000         PERFORM SPD9999-ABEND
 000000     END-IF.
 000000     IF HV-TOTAL-SAVING-CNT = 0
-000000         DISPLAY 'ACC_ID '
+000000         DISPLAY 'ACCOUNT '
 000000                 WS-PARAM-ACCID
 000000                 ' NOT FOUND'
 000000         STOP RUN
 000000     END-IF.
+000000     EXIT.
+000000*/-------------------------------------------------------------/*
+000000*                                | NOTE: 有効な預金チェック
+000000* SPD9999-CHK-ACC-ACTIVE SECTION |      （COMMON）
+000000*                                |       ACTIVE SAVING 判定
+000000*/-------------------------------------------------------------/*
+000000 SPD9999-CHK-ACC-ACTIVE.
 000000     EXEC SQL
 000000         SELECT COUNT(*)
 000000         INTO   :HV-ACTIVE-SAVING-CNT
@@ -297,14 +305,15 @@
 000000         AND    STATUS = :CST-STATUS-1
 000000     END-EXEC.
 000000     IF SQLCODE NOT = 0
-000000         MOVE 'CHECK-ACCID-STATUS'
+000000         MOVE 'SPD9999-CHK-ACC-ACTIVE'
 000000                                 TO 
-000000              CST-ABEND-BREAKPOINT
+000000               CST-ABEND-BREAKPOINT
 000000         MOVE 'SELECT ACTIVE SAVING FAILED'
 000000                                 TO 
-000000              CST-ABEND-DETAIL
-000000         PERFORM ABEND-PROGRAM
+000000               CST-ABEND-DETAIL
+000000         PERFORM SPD9999-ABEND
 000000     END-IF.
+000000 
 000000     IF HV-ACTIVE-SAVING-CNT = 0
 000000         DISPLAY 'ACC_ID '
 000000                 WS-PARAM-ACCID
@@ -314,10 +323,10 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息計算                         
-000000* FUNCTION-001           SECTION |      （FUN_001)                        
+000000* SPD9999-PREVIEW        SECTION |      （FUN_001)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*
-000000 FUNCTION-001.                                                          
+000000 SPD9999-PREVIEW.                                                         
 000000     MOVE 'N'                    TO     CST-EOF-CRS1.
 000000     EXEC SQL                                             
 000000         DECLARE CRS1 CURSOR FOR                          
@@ -336,16 +345,18 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT 
+000000         MOVE 'SPD9999-PREVIEW'     
+000000                                 TO     
+000000              CST-ABEND-BREAKPOINT 
 000000         MOVE 'OPEN CSR 1 FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL             
-000000         PERFORM ABEND-PROGRAM                            
+000000         PERFORM SPD9999-ABEND                            
 000000     END-IF.
-000000     PERFORM FETCH-CRS1                                                 
+000000     PERFORM SPD9999-FETCH-PREV                                        
 000000     PERFORM UNTIL CST-EOF-CRS1 = 'Y'
-000000         PERFORM PROCESS-CRS1                            
-000000         PERFORM FETCH-CRS1                                  
+000000         PERFORM SPD9999-PROC-PREV                            
+000000         PERFORM SPD9999-FETCH-PREV                                  
 000000     END-PERFORM.                                            
 000000     EXEC SQL                                                
 000000         CLOSE CRS1                                          
@@ -353,19 +364,21 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'FUNCTION-001'     TO     CST-ABEND-BREAKPOINT
+000000         MOVE 'SPD9999-PREVIEW'     
+000000                                 TO     
+000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'CLOSE CSR 1 FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL              
-000000         PERFORM ABEND-PROGRAM                            
+000000         PERFORM SPD9999-ABEND                            
 000000     END-IF.     
 000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 決済処理                         
-000000* FUNCTION-002           SECTION |      （FUN_002)                        
+000000* SPD9999-SETTLE         SECTION |      （FUN_002)                   
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*         
-000000 FUNCTION-002.
+000000 SPD9999-SETTLE.
 000000     MOVE 'N'                    TO      CST-EOF-CRS2.
 000000     EXEC SQL                                            
 000000         DECLARE CRS2 CURSOR FOR
@@ -385,17 +398,19 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE
-000000         MOVE 'FUNCTION-002'     TO      CST-ABEND-BREAKPOINT
+000000         MOVE 'SPD9999-SETTLE'     
+000000                                 TO      
+000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'OPEN CSR 2 FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL
-000000         PERFORM ABEND-PROGRAM                          
+000000         PERFORM SPD9999-ABEND                          
 000000     END-IF.                                              
 000000*                                                         
-000000     PERFORM FETCH-CRS2
+000000     PERFORM SPD9999-FETCH-SET
 000000     PERFORM UNTIL CST-EOF-CRS2 = 'Y'
-000000         PERFORM PROCESS-CRS2
-000000         PERFORM FETCH-CRS2
+000000         PERFORM SPD9999-PROC-SET
+000000         PERFORM SPD9999-FETCH-SET
 000000     END-PERFORM                                        
 000000     EXEC SQL                                             
 000000         CLOSE CRS2                                       
@@ -403,19 +418,21 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'FUNCTION-002'     TO     CST-ABEND-BREAKPOINT
+000000         MOVE 'SPD9999-SETTLE'     
+000000                                 TO     
+000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'CLOSE CSR 2 FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL              
-000000         PERFORM ABEND-PROGRAM                            
+000000         PERFORM SPD9999-ABEND                            
 000000     END-IF. 
 000000     EXIT. 
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データ取得・計算                 
-000000* FETCH-CRS1             SECTION |      （FUN_001）
+000000* SPD9999-FETCH-PREV     SECTION |      （FUN_001）
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
-000000 FETCH-CRS1.
+000000 SPD9999-FETCH-PREV.
 000000     EXEC SQL
 000000         FETCH CRS1
 000000         INTO  :AS-ORDER-ID,
@@ -430,36 +447,33 @@
 000000         WHEN 100
 000000             MOVE 'Y'            TO      CST-EOF-CRS1
 000000         WHEN OTHER
-000000             MOVE 'FETCH-CRS1'
+000000             MOVE 'SPD9999-FETCH-PREV'
 000000                                 TO 
 000000                  CST-ABEND-BREAKPOINT
 000000             MOVE 'FETCH CSR1 FAILED'
 000000                                 TO 
 000000                  CST-ABEND-DETAIL
-000000             PERFORM ABEND-PROGRAM
+000000             PERFORM SPD9999-ABEND
 000000     END-EVALUATE.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データ取得・計算                 
-000000* PROCESS-CRS1           SECTION |      （FUN_001）
+000000* SPD9999-PROC-PREV      SECTION |      （FUN_001）
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
-000000 PROCESS-CRS1.
-000000     PERFORM INIT-CALC-VAR.
-000000     PERFORM GET-DATE-INFO-FUN001.
-000000     PERFORM EXEC-GET-INTEREST-RATE.
-000000     PERFORM CALCULATE-FUN001.
-000000     IF CST-DEBUG-MODE = 'Y'
-000000         PERFORM DISPLAY-DETAIL-FUN001
-000000     END-IF.
+000000 SPD9999-PROC-PREV.
+000000     PERFORM SPD9999-INIT-CALC.
+000000     PERFORM SPD9999-GET-DATE-PREV.
+000000     PERFORM SPD9999-GET-RATE.
+000000     PERFORM SPD9999-CALC-PREV.
 000000     ADD 1                       TO      CST-COUNT-FUNC001.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 現在日付取得                    
-000000* GET-DATE-INFO-FUN001   SECTION |      （FUN_001）                       
+000000* SPD9999-GET-DATE-PREV  SECTION |      （FUN_001）                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
-000000 GET-DATE-INFO-FUN001.
+000000 SPD9999-GET-DATE-PREV.
 000000     COMPUTE HV-DATE-START-9      =
 000000         FUNCTION NUMVAL(AS-START-DATE).
 000000     COMPUTE HV-DAYS-START-COMP   =
@@ -470,10 +484,10 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 現在日付および期間日数取得                    
-000000* GET-DATE-INFO-FUN002   SECTION |      （FUN_002）                        
+000000* SPD9999-GET-DATE-SET   SECTION |      （FUN_002）                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
-000000 GET-DATE-INFO-FUN002.
+000000 SPD9999-GET-DATE-SET.
 000000     COMPUTE HV-DATE-START-9      =
 000000         FUNCTION NUMVAL(AS-START-DATE).
 000000     COMPUTE HV-DAYS-START-COMP   =
@@ -488,10 +502,10 @@
 000000     EXIT.                                             
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利率取得                         
-000000* EXEC-GET-INTEREST-RATE SECTION |      （COMMON）                         
+000000* SPD9999-GET-RATE       SECTION |      （COMMON）                         
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*      
-000000 EXEC-GET-INTEREST-RATE.
+000000 SPD9999-GET-RATE.
 000000     EXEC SQL                                                       
 000000         SELECT INTEREST_RATE                                       
 000000         INTO   :WS-RATE-INTEREST                                     
@@ -501,21 +515,21 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'EXEC-GET-INTEREST-RATE' 
+000000         MOVE 'SPD9999-GET-RATE' 
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'SELECT INTEREST_RATE INTO :WS-RATE-INTEREST FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL       
-000000         PERFORM ABEND-PROGRAM                               
+000000         PERFORM SPD9999-ABEND                               
 000000     END-IF.
 000000     EXIT.                                                     
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 非定期利率取得                   
-000000* EXEC-GET-NONTERM-RATE  SECTION |       (FUN_002)                      
+000000* SPD9999-GET-NONTERM    SECTION |       (FUN_002)                      
 000000*                                |                                       
 000000*/-------------------------------------------------------------/*         
-000000 EXEC-GET-NONTERM-RATE.
+000000 SPD9999-GET-NONTERM.
 000000     EXEC SQL                                                  
 000000         SELECT  INTEREST_RATE                                  
 000000         INTO    :WS-RATE-NONTERM                                 
@@ -525,21 +539,21 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'EXEC-GET-NONTERM-RATE' 
+000000         MOVE 'SPD9999-GET-NONTERM' 
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'SELECT INTEREST_RATE INTO :WS-RATE-NON-TERM FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL                                        
-000000         PERFORM ABEND-PROGRAM                              
+000000         PERFORM SPD9999-ABEND                              
 000000     END-IF.
 000000     EXIT.   
 000000*/-------------------------------------------------------------/*
 000000*                                | NOTE: 利息計算ロジック
-000000* CALCULATE-FUN001       SECTION |      （FUN_001)
+000000* SPD9999-CALC-PREV      SECTION |      （FUN_001)
 000000*                                |
 000000*/-------------------------------------------------------------/*
-000000 CALCULATE-FUN001.
+000000 SPD9999-CALC-PREV.
 000000     IF AS-SAVING-TYPE = CST-NON-TERM
 000000         COMPUTE WS-AMOUNT-INTEREST =
 000000                 AS-MONEY-ROOT      *
@@ -559,10 +573,10 @@
 000000     EXIT.                 
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息計算ロジック
-000000* CALCULATE-FUN002       SECTION |      （FUN_002)                   
+000000* SPD9999-CALC-SET       SECTION |      （FUN_002)                   
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
-000000 CALCULATE-FUN002.
+000000 SPD9999-CALC-SET.
 000000     IF AS-SAVING-TYPE = CST-NON-TERM 
 000000         COMPUTE WS-AMOUNT-INTEREST     =                             
 000000                 AS-MONEY-ROOT          * 
@@ -591,7 +605,7 @@
 000000                     WS-DAYS-TERM       / 
 000000                     CST-FIXED-VALUE-12
 000000         ELSE       
-000000             PERFORM EXEC-GET-NONTERM-RATE
+000000             PERFORM SPD9999-GET-NONTERM
 000000             COMPUTE WS-AMOUNT-INTEREST =                      
 000000                     AS-MONEY-ROOT      * 
 000000                     WS-RATE-NONTERM    * 
@@ -605,10 +619,10 @@
 000000     EXIT.                                                   
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 決済対象データ取得               
-000000* FETCH-CRS2             SECTION |      （FUN_002）                        
+000000* SPD9999-FETCH-SET      SECTION |      （FUN_002）                        
 000000*                                |       STATUS = '1' の預金を取得        
 000000*/-------------------------------------------------------------/*
-000000 FETCH-CRS2.
+000000 SPD9999-FETCH-SET.
 000000     EXEC SQL
 000000         FETCH CRS2
 000000         INTO  :AS-ORDER-ID,
@@ -624,42 +638,45 @@
 000000         WHEN 100
 000000             MOVE 'Y'            TO      CST-EOF-CRS2
 000000         WHEN OTHER
-000000             MOVE 'FETCH-CRS2'
+000000             MOVE 'SPD9999-FETCH-SET'
 000000                                 TO 
 000000                  CST-ABEND-BREAKPOINT
 000000             MOVE 'FETCH CRS2 FAILED'
 000000                                 TO 
 000000                  CST-ABEND-DETAIL
-000000             PERFORM ABEND-PROGRAM
+000000             PERFORM SPD9999-ABEND
 000000     END-EVALUATE.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 満期決済レコード処理             
-000000* PROCESS-CRS2           SECTION |      （FUN_002）                        
+000000* SPD9999-PROC-SET       SECTION |      （FUN_002）                  
 000000*                                |                      
 000000*/-------------------------------------------------------------/*
-000000 PROCESS-CRS2.
-000000     PERFORM INIT-CALC-VAR
-000000     PERFORM GET-DATE-INFO-FUN002
-000000     PERFORM EXEC-GET-INTEREST-RATE
-000000     PERFORM CALCULATE-FUN002
-000000     MOVE AS-ACC-ID              TO      AB-ACC-ID
-000000     PERFORM GET-ACCOUNT-BALANCE
-000000     COMPUTE WS-NEW-BALANCE =
-000000             AB-BALANCE + WS-AMOUNT-TOTAL
-000000     PERFORM UPDATE-ACCOUNT-BALANCE
-000000     PERFORM UPDATE-SAVING-STATUS
-000000     IF CST-DEBUG-MODE = 'Y'
-000000         PERFORM DISPLAY-DETAIL-FUN002
-000000     END-IF
-000000     ADD 1 TO CST-COUNT-FUNC002
+000000 SPD9999-PROC-SET.
+000000     PERFORM SPD9999-INIT-CALC.
+000000     PERFORM SPD9999-GET-DATE-SET.
+000000     PERFORM SPD9999-GET-RATE.
+000000     PERFORM SPD9999-CALC-SET.
+000000     MOVE AS-ACC-ID              TO      AB-ACC-ID.
+000000     PERFORM SPD9999-GET-BAL.
+000000     COMPUTE WS-NEW-BALANCE  =
+000000             AB-BALANCE      + 
+000000             WS-AMOUNT-TOTAL.
+000000     PERFORM SPD9999-UPD-BAL.
+000000     PERFORM SPD9999-UPD-SAV.
+000000     ADD 1                       TO      CST-COUNT-FUNC002.
+000000     ADD 1                       TO      CST-COMMIT-CNT.
+000000     IF CST-COMMIT-CNT >= CST-COMMIT-LIMIT
+000000         PERFORM SPD9999-COMMIT
+000000         MOVE 0                  TO      CST-COMMIT-CNT
+000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*
 000000*                                | NOTE: 口座残高取得                     
-000000* GET-ACCOUNT-BALANCE    SECTION |      （FUN_002）                        
-000000*                                |      対象: DB_ACCOUNT_BALANCE                      
+000000* SPD9999-GET-BAL        SECTION |      （FUN_002）                        
+000000*                                |      対象: DB_ACCOUNT_BALANCE          
 000000*/-------------------------------------------------------------/*
-000000 GET-ACCOUNT-BALANCE.
+000000 SPD9999-GET-BAL.
 000000     EXEC SQL
 000000         SELECT BALANCE
 000000         INTO   :AB-BALANCE
@@ -670,21 +687,21 @@
 000000     IF SQLCODE = 0
 000000         CONTINUE
 000000     ELSE
-000000         MOVE 'GET-ACCOUNT-BALANCE'
+000000         MOVE 'SPD9999-GET-BAL'
 000000                                 TO
 000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'SELECT BALANCE FAILED'
 000000                                 TO
 000000              CST-ABEND-DETAIL
-000000         PERFORM ABEND-PROGRAM
+000000         PERFORM SPD9999-ABEND
 000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 口座残高更新                 
-000000* UPDATE-ACCOUNT-BALANCE SECTION |      （FUN_002)                       
+000000* SPD9999-UPD-BAL        SECTION |      （FUN_002)                       
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
-000000 UPDATE-ACCOUNT-BALANCE.
+000000 SPD9999-UPD-BAL.
 000000     EXEC SQL                                             
 000000         UPDATE  MYDB.DB_ACCOUNT_BALANCE                   
 000000         SET     BALANCE = :WS-NEW-BALANCE             
@@ -694,21 +711,21 @@
 000000         ADD 1 TO CST-COUNT-UPD-BALANCE
 000000         CONTINUE
 000000     ELSE
-000000         MOVE 'UPDATE-ACCOUNT-BALANCE' 
+000000         MOVE 'SPD9999-UPD-BAL' 
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT 
 000000         MOVE 'UPDATE ACCOUNT BALANCE FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL         
-000000         PERFORM ABEND-PROGRAM                                  
+000000         PERFORM SPD9999-ABEND                                  
 000000     END-IF. 
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 預金ステータス更新              
-000000* UPDATE-SAVING-STATUS   SECTION |      （FUN_002)                        
+000000* SPD9999-UPD-SAV        SECTION |      （FUN_002)                        
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
-000000 UPDATE-SAVING-STATUS.
+000000 SPD9999-UPD-SAV.
 000000     EXEC SQL                                                      
 000000         UPDATE     MYDB.DB_ACCOUNT_SAVINGS                            
 000000         SET        STATUS   = :CST-STATUS-9                         
@@ -718,95 +735,41 @@
 000000         ADD 1 TO CST-COUNT-UPD-STATUS
 000000         CONTINUE
 000000     ELSE  
-000000         MOVE 'UPDATE-SAVING-STATUS' 
+000000         MOVE 'SPD9999-UPD-SAV' 
 000000                                 TO 
 000000              CST-ABEND-BREAKPOINT
 000000         MOVE 'UPDATE SAVING STATUS FAILED'     
 000000                                 TO     
 000000              CST-ABEND-DETAIL           
-000000         PERFORM ABEND-PROGRAM                                   
+000000         PERFORM SPD9999-ABEND                                   
 000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: データのコミット                     
-000000* COMMIT                 SECTION |      （COMMON）                      
+000000* SPD9999-COMMIT         SECTION |      （COMMON）                      
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
-000000 COMMIT-DATA.
+000000 SPD9999-COMMIT.
 000000     EXEC SQL
 000000         COMMIT
 000000     END-EXEC.
 000000     IF SQLCODE = 0
 000000         CONTINUE          
 000000     ELSE
-000000         MOVE 'COMMIT-DATA'      TO      CST-ABEND-BREAKPOINT
+000000         MOVE 'SPD9999-COMMIT'   TO      CST-ABEND-BREAKPOINT
 000000         MOVE 'COMMIT FAILED'    TO      CST-ABEND-DETAIL    
-000000         PERFORM ABEND-PROGRAM
+000000         PERFORM SPD9999-ABEND
 000000     END-IF.
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 利息・決済明細表示                
-000000* DISPLAY-DETAIL-FUN001  SECTION |      （FUN_001)                    
-000000*                                |                                      
-000000*/-------------------------------------------------------------/*  
-000000 DISPLAY-DETAIL-FUN001.
-000000     DISPLAY '*/--------------------------------------/*'.
-000000     DISPLAY 'OUTPUT FUNCTION-001 : INTEREST CALCULATION'.
-000000     DISPLAY '*/--------------------------------------/*'.
-000000     DISPLAY 'ORDER_ID            : ' AS-ORDER-ID.
-000000     DISPLAY 'ACC_ID              : ' AS-ACC-ID.
-000000     DISPLAY 'SAVING_TYPE         : ' AS-SAVING-TYPE.
-000000     DISPLAY 'MONEY_ROOT          : ' AS-MONEY-ROOT.
-000000     DISPLAY 'INTEREST_RATE       : ' WS-RATE-INTEREST.
-000000     DISPLAY 'INTEREST            : ' WS-AMOUNT-INTEREST.
-000000     DISPLAY 'TOTAL               : ' WS-AMOUNT-TOTAL.
-000000     DISPLAY 'STATUS              : ' CST-STATUS-1.
-000000     DISPLAY '*/--------------------------------------/*'.
-000000     DISPLAY 'START_DATE(DB)      : ' AS-START-DATE.
-000000     DISPLAY 'CURRENT_DATE        : ' HV-DATE-CURRENT-9.
-000000     DISPLAY 'START_DATE(INT)     : ' HV-DAYS-START-COMP.
-000000     DISPLAY 'CURRENT_DATE(INT)   : ' HV-DAYS-CURRENT-COMP.
-000000     DISPLAY 'ACTUAL_DAYS         : ' WS-DAYS-ACTUAL.
-000000     DISPLAY '*/--------------------------------------/*'.
-000000     EXIT.
-000000*/-------------------------------------------------------------/*         
-000000*                                | NOTE: 利息・決済明細表示                
-000000* DISPLAY-DETAIL-FUN002  SECTION |      （FUN_002)                       
-000000*                                |                                      
-000000*/-------------------------------------------------------------/*  
-000000 DISPLAY-DETAIL-FUN002.
-000000     DISPLAY '*/----------------------------/*'.
-000000     DISPLAY 'OUTPUT FUNCTION-002 : SETTLEMENT'.
-000000     DISPLAY '*/----------------------------/*'.
-000000     DISPLAY 'ORDER_ID            : ' AS-ORDER-ID.
-000000     DISPLAY 'ACC_ID              : ' AB-ACC-ID.
-000000     DISPLAY 'SAVING_TYPE         : ' AS-SAVING-TYPE.
-000000     DISPLAY 'MONEY_ROOT          : ' AS-MONEY-ROOT.
-000000     DISPLAY 'INTEREST            : ' WS-AMOUNT-INTEREST.
-000000     DISPLAY 'TOTAL               : ' WS-AMOUNT-TOTAL.
-000000     DISPLAY 'STATUS              : ' CST-STATUS-9.
-000000     DISPLAY '*/----------------------------/*'.
-000000     DISPLAY 'START_DATE(DB)      : ' AS-START-DATE.
-000000     DISPLAY 'END_DATE(DB)        : ' AS-END-DATE.
-000000     DISPLAY 'CURRENT_DATE        : ' HV-DATE-CURRENT-9.
-000000     DISPLAY 'START_DATE(INT)     : ' HV-DAYS-START-COMP.
-000000     DISPLAY 'END_DATE(INT)       : ' HV-DAYS-END-COMP.
-000000     DISPLAY 'CURRENT_DATE(INT)   : ' HV-DAYS-CURRENT-COMP.
-000000     DISPLAY 'ACTUAL_DAYS         : ' WS-DAYS-ACTUAL.
-000000     DISPLAY 'TERM_DAYS           : ' WS-DAYS-TERM.
-000000     DISPLAY 'INTEREST_RATE       : ' WS-RATE-INTEREST.
-000000     DISPLAY 'NONTERM_RATE        : ' WS-RATE-NONTERM.
-000000     DISPLAY '*/----------------------------/*'.
-000000     EXIT.
-000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 利息・決済処理件数表示                
-000000* DISPLAY-TOTAL          SECTION |      （COMMON）                    
+000000* SPD9999-DISP-TOTAL     SECTION |      （COMMON）                    
 000000*                                |                                      
 000000*/-------------------------------------------------------------/* 
-000000 DISPLAY-TOTAL.
-000000     DISPLAY 'TOTAL ACCOUNTS PROCESSED IN FUNCTION-001 : ' 
+000000 SPD9999-DISP-TOTAL.
+000000     DISPLAY 'TOTAL ACCOUNTS PROCESSED IN SPD9999-PREVIEW : ' 
 000000             CST-COUNT-FUNC001.
-000000     DISPLAY 'TOTAL ACCOUNTS PROCESSED IN FUNCTION-002 : ' 
+000000     DISPLAY 'TOTAL ACCOUNTS PROCESSED IN SPD9999-SETTLE : ' 
 000000             CST-COUNT-FUNC002.
 000000     DISPLAY 'TOTAL ACCOUNTS UPDATED BALANCE           : '
 000000             CST-COUNT-UPD-BALANCE.
@@ -815,11 +778,11 @@
 000000     EXIT.
 000000*/-------------------------------------------------------------/*         
 000000*                                | NOTE: 異常終了処理                     
-000000* ABEND-PROGRAM          SECTION |      （COMMON）                      
+000000* SPD9999-ABEND          SECTION |      （COMMON）                      
 000000*                                |                                      
 000000*/-------------------------------------------------------------/*     
-000000 ABEND-PROGRAM.
-000000     DISPLAY 'ABEND-PROGRAM'.
+000000 SPD9999-ABEND.
+000000     DISPLAY 'SPD9999-ABEND'.
 000000     DISPLAY 'ERROR MODULE : ' CST-ABEND-BREAKPOINT.
 000000     DISPLAY 'ERROR DETAIL : ' CST-ABEND-DETAIL.
 000000     DISPLAY 'SQLCODE      : ' SQLCODE.

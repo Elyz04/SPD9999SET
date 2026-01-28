@@ -15,7 +15,7 @@
 // SET DBRMLIB=XXX.XXX.DBRMLIB      
 // SET SRCLIB=XXX.XXX.CBL           
 // SET CPYLIB=XXX.XXX.DCLGEN        
-// SET PGM=PGM001                   
+// SET PGM=SPD9999SET                   
 // SET MEMB=MAIN                    
 // SET WSPC=800                     
 // SET INPUT=XXX.XXX.READ           
@@ -89,7 +89,7 @@
 //SYSTSIN  DD   *
 DSN SYSTEM(DB9G)-
   BIND PLAN(DF02)- 
-  MEMBER(PGM001)- 
+  MEMBER(SPD9999SET)- 
   ACTION(REPLACE)- 
   QUALIFIER(DF)-
   ENCODING(EBCDIC)- 
