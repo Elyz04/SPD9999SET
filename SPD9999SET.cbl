@@ -633,8 +633,8 @@
 000000                 WS-DAYS-ACTUAL     / 
 000000                 CST-FIXED-VALUE-12
 000000     END-IF.
-000000     COMPUTE WS-AMOUNT-TOTAL    =
-000000             AS-MONEY-ROOT      + 
+000000     COMPUTE WS-AMOUNT-TOTAL        =
+000000             AS-MONEY-ROOT          + 
 000000             WS-AMOUNT-INTEREST.
 000000     EXIT.                 
 000000*/-------------------------------------------------------------/*         
