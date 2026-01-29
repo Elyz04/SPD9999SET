@@ -118,7 +118,7 @@
 000000    03 CST-MODE-BOTH             PIC X(01)  VALUE '3'.
 000000*--- COMMIT CONTROL
 000000    03 CST-COMMIT-CNT            PIC 9(05)  VALUE 0.
-000000    03 CST-COMMIT-LIMIT          PIC 9(05)  VALUE 100.   
+000000    03 CST-COMMIT-LIMIT          PIC 9(05)  VALUE 10.   
 000000*--- DEBUG / ABEND  
 000000    03 CST-ABEND-BREAKPOINT      PIC X(100) VALUE SPACES.
 000000    03 CST-ABEND-DETAIL          PIC X(100) VALUE SPACES.  
@@ -497,6 +497,9 @@
 000000              CST-ABEND-DETAIL              
 000000         PERFORM SPD9999-ABEND                            
 000000     END-IF. 
+000000     IF CST-COMMIT-CNT > 0
+000000         PERFORM SPD9999-COMMIT
+000000     END-IF.
 000000     EXIT. 
 000000*/-------------------------------------------------------------/*         
 000000*                                | [NOTE] データ取得・計算                 
